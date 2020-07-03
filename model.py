@@ -44,15 +44,12 @@ class BertNer(BertPreTrainedModel):
         outputs = (logits,) + outputs[2:]  # add hidden states and attention if they are here
         loss_function = nn.CrossEntropyLoss()
         # Only keep active parts of the loss
-        if attention_mask_label is not None:
-            active_loss = attention_mask_label.view(-1) == 1
-            active_logits = logits.view(-1, self.num_labels)[active_loss]
-            active_labels = labels.view(-1)[active_loss]
-            loss = loss_function(active_logits, active_labels)
-        else:
-            loss = loss_function(logits.view(-1, self.num_labels), labels.view(-1))
-        outputs = (loss,) + outputs
-        return outputs  # (loss), scores, (hidden_states), (attentions)
+        active_loss = attention_mask_label.view(-1) == 1
+        active_logits = logits.view(-1, self.num_labels)[active_loss]
+        active_labels = labels.view(-1)[active_loss]
+        loss = loss_function(active_logits, active_labels)
+        outputs = (loss, active_logits)
+        return outputs  # (loss), logits
 
 
 def modelbuilder(model_name_or_path, num_labels):

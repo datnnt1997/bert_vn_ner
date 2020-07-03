@@ -1,6 +1,18 @@
 import os
 import csv
+import sys
 
+maxInt = sys.maxsize
+
+while True:
+    # decrease the maxInt value by factor 10
+    # as long as the OverflowError occurs.
+
+    try:
+        csv.field_size_limit(maxInt)
+        break
+    except OverflowError:
+        maxInt = int(maxInt/10)
 
 class Example:
     def __init__(self, eid: int, token_ids: list, token_mask: list, segment_ids: list,
@@ -17,8 +29,7 @@ class NERProcessor:
     def __init__(self, data_dir: str, tokenizer):
         self.data_dir = data_dir
         self.tokenizer = tokenizer
-        self.labels = ["O", "B-MISC", "I-MISC",  "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC", "X",
-                       "[CLS]", "[SEP]"]
+        self.labels = ["O", "B-MISC", "I-MISC",  "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC"]
 
     def get_labels(self):
         return self.labels
@@ -43,7 +54,7 @@ class NERProcessor:
             labels = []
             examples = []
             for line in reader:
-                if len(line) == 2:
+                if len(line) >= 2:
                     words.append(line[0].strip())
                     labels.append(line[-1].strip())
                 else:
@@ -67,8 +78,6 @@ class NERProcessor:
                     if m == 0:
                         labels.append(label_1)
                         label_mask.append(1)
-                    else:
-                        labels.append("X")
             if len(tokens) >= max_seq_length - 1:
                 tokens = tokens[0:(max_seq_length - 2)]
                 labels = labels[0:(max_seq_length - 2)]
@@ -78,8 +87,8 @@ class NERProcessor:
             label_ids = []
             ntokens.append("[CLS]")
             segment_ids.append(0)
-            label_mask.insert(0, 1)
-            label_ids.append(self.labels.index("[CLS]")+1)
+            label_mask.insert(0, 0)
+            label_ids.append(self.labels.index("O")+1)
             for i, token in enumerate(tokens):
                 ntokens.append(token)
                 segment_ids.append(0)
@@ -87,8 +96,8 @@ class NERProcessor:
                     label_ids.append(self.labels.index(labels[i])+1)
             ntokens.append("[SEP]")
             segment_ids.append(0)
-            label_mask.append(1)
-            label_ids.append(self.labels.index("[SEP]")+1)
+            label_mask.append(0)
+            label_ids.append(self.labels.index("O")+1)
             input_ids = self.tokenizer.convert_tokens_to_ids(ntokens)
             input_mask = [1] * len(input_ids)
             label_mask = [1] * len(label_ids)
@@ -110,8 +119,7 @@ class NERProcessor:
             if ex_index < 5:
                 print("*** Example ***")
                 print("guid: %s" % (example[0]))
-                print("tokens: %s" % " ".join(
-                    [str(x) for x in tokens]))
+                print("tokens: %s" % " ".join([str(x) for x in tokens]))
                 print("input_ids: %s" % " ".join([str(x) for x in input_ids]))
                 print("input_mask: %s" % " ".join([str(x) for x in input_mask]))
                 print(
