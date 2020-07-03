@@ -3,6 +3,7 @@ import torch
 import argparse
 import random
 import numpy as np
+import json
 import torch.functional as F
 from model import *
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
@@ -10,6 +11,7 @@ from processor import NERProcessor
 from tqdm import tqdm
 from transformers import AdamW
 from sklearn.metrics import classification_report, f1_score
+
 
 def build_dataset(args, processor, data_type='train'):
     # Load data features from cache or dataset file
@@ -54,22 +56,22 @@ def main():
     ## Other parameters
     parser.add_argument("--cache_dir", default="", type=str,
                         help="Where do you want to store the pre-trained models downloaded from s3")
-    parser.add_argument("--max_seq_length", default=128, type=int,
+    parser.add_argument("--max_seq_length", default=256, type=int,
                         help="The maximum total input sequence length after tokenization. Sequences longer "
                              "than this will be truncated, sequences shorter will be padded.")
-    parser.add_argument("--train_batch_size", default=16, type=int,
+    parser.add_argument("--train_batch_size", default=8, type=int,
                         help="Batch size per GPU/CPU for training.")
     parser.add_argument("--eval_batch_size", default=4, type=int,
                         help="Batch size per GPU/CPU for evaluation.")
-    parser.add_argument("--learning_rate", default=1e-4, type=float,
+    parser.add_argument("--learning_rate", default=2e-5, type=float,
                         help="The initial learning rate for Adam.")
     parser.add_argument("--weight_decay", default=0.0, type=float,
                         help="Weight deay if we apply some.")
-    parser.add_argument("--adam_epsilon", default=1e-6, type=float,
+    parser.add_argument("--adam_epsilon", default=1e-8, type=float,
                         help="Epsilon for Adam optimizer.")
     parser.add_argument("--max_grad_norm", default=1.0, type=float,
                         help="Max gradient norm.")
-    parser.add_argument("--num_train_epochs", default=10.0, type=float,
+    parser.add_argument("--num_train_epochs", default=100.0, type=float,
                         help="Total number of training epochs to perform.")
     parser.add_argument("--cuda", action='store_true',
                         help="Avoid using CUDA when available")
@@ -97,9 +99,6 @@ def main():
 
     train_data = build_dataset(args, processor, data_type='train')
 
-    # num_train_optimization_steps = int(
-    #    len(train_examples) / args.train_batch_size / args.gradient_accumulation_steps) * args.num_train_epochs
-
     model.to(device)
     param_optimizer = list(model.named_parameters())
     no_decay = ['bias', 'LayerNorm.weight']
@@ -116,7 +115,11 @@ def main():
     train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=args.train_batch_size)
     model.train()
     best_score = -1
-    for _ in range(int(args.num_train_epochs)):
+    best_epoch = 0
+    training_loss = []
+    evaling_loss = []
+    for e in range(int(args.num_train_epochs)):
+        print("="*30 + f"Epoch {e}" + "="*30)
         tr_loss = 0
         nb_tr_examples, nb_tr_steps = 0, 0
         model.train()
@@ -125,11 +128,6 @@ def main():
             input_ids, input_mask, segment_ids, label_ids, l_mask = batch
             loss, _ = model.calculate_loss(input_ids, segment_ids, input_mask, label_ids, l_mask)
 
-            # loss = loss / args.gradient_accumulation_steps
-
-
-            # torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
-
             tr_loss += loss.item()
             nb_tr_examples += input_ids.size(0)
             nb_tr_steps += 1
@@ -137,6 +135,7 @@ def main():
             optimizer.step()
             model.zero_grad()
         print(tr_loss)
+        training_loss.append(tr_loss)
         eval_data = build_dataset(args, processor, data_type='test')
         eval_sampler = RandomSampler(eval_data)
         eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size)
@@ -163,13 +162,21 @@ def main():
             golds.extend(gold)
         metric = classification_report(golds, preds)
         f1 = f1_score(golds, preds, average="macro")
+        evaling_loss.append(eval_loss)
         print(metric)
         print(eval_loss)
         if f1 > best_score:
             best_score = f1
+            best_epoch = e
             model_path = f"{args.output_dir}/vner_model.bin"
             torch.save(model.state_dict(), model_path)
-            print(f"Model save with best score {best_score}")
+            print(f"Model save at epoch {best_epoch} with best score {best_score}")
+        history_path = f"{args.output_dir}/history.json"
+        history = {"train_loss": training_loss,
+                   "eval_loss": evaling_loss,
+                   "best_epoch": best_epoch,
+                   "best_f1": best_score}
+        json.dump(history, history_path)
 
 if __name__ == "__main__":
     main()

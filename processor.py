@@ -78,6 +78,9 @@ class NERProcessor:
                     if m == 0:
                         labels.append(label_1)
                         label_mask.append(1)
+                    else:
+                        labels.append("O")
+                        label_mask.append(0)
             if len(tokens) >= max_seq_length - 1:
                 tokens = tokens[0:(max_seq_length - 2)]
                 labels = labels[0:(max_seq_length - 2)]
@@ -100,7 +103,7 @@ class NERProcessor:
             label_ids.append(self.labels.index("O")+1)
             input_ids = self.tokenizer.convert_tokens_to_ids(ntokens)
             input_mask = [1] * len(input_ids)
-            label_mask = [1] * len(label_ids)
+            # label_mask = [1] * len(label_ids)
             while len(input_ids) < max_seq_length:
                 input_ids.append(0)
                 input_mask.append(0)
@@ -109,7 +112,6 @@ class NERProcessor:
                 label_mask.append(0)
             while len(label_ids) < max_seq_length:
                 label_ids.append(0)
-                label_mask.append(0)
             assert len(input_ids) == max_seq_length
             assert len(input_mask) == max_seq_length
             assert len(segment_ids) == max_seq_length
@@ -125,6 +127,7 @@ class NERProcessor:
                 print(
                     "segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
                 print("label: %s" % " ".join([str(x) for x in label_ids]))
+                print("label_mask: %s" % " ".join([str(x) for x in label_mask]))
             features.append(
                 Example(eid=example[0],
                         token_ids=input_ids,
