@@ -1,6 +1,6 @@
+import torch
 import torch.nn as nn
 
-from transformers.tokenization_bert import BertTokenizer
 from transformers.modeling_bert import BertModel, BertPreTrainedModel, BertConfig
 
 
@@ -14,19 +14,23 @@ class BertNer(BertPreTrainedModel):
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
         self.init_weights()
 
-    def forward(self, input_ids, attention_mask=None, token_type_ids=None,
-                position_ids=None, head_mask=None):
+    def forward(self, input_ids, token_type_ids=None, attention_mask=None, attention_mask_label=None):
 
         outputs = self.bert(input_ids,
                             attention_mask=attention_mask,
                             token_type_ids=token_type_ids,
-                            position_ids=position_ids,
-                            head_mask=head_mask)
+                            head_mask=None)
+
         sequence_output = outputs[0]
+
         sequence_output = self.dropout(sequence_output)
+
         logits = self.classifier(sequence_output)
-        outputs = (logits,) + outputs[2:]  # add hidden states and attention if they are here
-        return outputs  # (loss), scores, (hidden_states), (attentions)
+
+        active_loss = attention_mask_label.view(-1) == 1
+        active_logits = logits.view(-1, self.num_labels)[active_loss]
+
+        return active_logits
 
     def calculate_loss(self, input_ids, token_type_ids=None, attention_mask=None, labels=None,
                        attention_mask_label=None):
@@ -40,8 +44,6 @@ class BertNer(BertPreTrainedModel):
 
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
-
-        outputs = (logits,) + outputs[2:]  # add hidden states and attention if they are here
         loss_function = nn.CrossEntropyLoss()
         # Only keep active parts of the loss
         active_loss = attention_mask_label.view(-1) == 1
@@ -55,6 +57,13 @@ class BertNer(BertPreTrainedModel):
 def modelbuilder(model_name_or_path, num_labels):
     config = BertConfig.from_pretrained(model_name_or_path, num_labels=num_labels)
     model = BertNer.from_pretrained(model_name_or_path, config=config)
+    return config, model
+
+def model_builder_from_pretrained(model_name_or_path, num_labels, pre_train_path):
+    config = BertConfig.from_pretrained(model_name_or_path, num_labels=num_labels)
+    model = BertNer.from_pretrained(model_name_or_path, config=config)
+    model.load_state_dict(torch.load(pre_train_path+"/vner_model.bin", map_location='cpu'))
+    model.eval()
     return config, model
 
 

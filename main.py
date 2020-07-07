@@ -3,13 +3,16 @@ import torch
 import argparse
 import random
 import numpy as np
+
 import json
 import torch.functional as F
+
 from model import *
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
+from torch.utils.data import DataLoader, RandomSampler, TensorDataset
 from processor import NERProcessor
 from tqdm import tqdm
 from transformers import AdamW
+from transformers.tokenization_bert import BertTokenizer
 from sklearn.metrics import classification_report, f1_score
 
 
@@ -84,8 +87,6 @@ def main():
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() and not args.cuda else "cpu")
-    n_gpu = torch.cuda.device_count()
-
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -100,15 +101,7 @@ def main():
     train_data = build_dataset(args, processor, data_type='train')
 
     model.to(device)
-    param_optimizer = list(model.named_parameters())
-    no_decay = ['bias', 'LayerNorm.weight']
-    optimizer_grouped_parameters = [
-        {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
-         'weight_decay': args.weight_decay},
-        {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
-    ]
-    # warmup_steps = int(args.warmup_proportion * num_train_optimization_steps)
-    optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
+    optimizer = AdamW(model.named_parameters(), lr=args.learning_rate, eps=args.adam_epsilon)
 
     # Train
     train_sampler = RandomSampler(train_data)
@@ -121,7 +114,6 @@ def main():
     for e in range(int(args.num_train_epochs)):
         print("="*30 + f"Epoch {e}" + "="*30)
         tr_loss = 0
-        nb_tr_examples, nb_tr_steps = 0, 0
         model.train()
         for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
             batch = tuple(t.to(device) for t in batch)
@@ -129,8 +121,6 @@ def main():
             loss, _ = model.calculate_loss(input_ids, segment_ids, input_mask, label_ids, l_mask)
 
             tr_loss += loss.item()
-            nb_tr_examples += input_ids.size(0)
-            nb_tr_steps += 1
             loss.backward()
             optimizer.step()
             model.zero_grad()
@@ -141,7 +131,6 @@ def main():
         eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size)
         model.eval()
         eval_loss = 0
-        nb_eval_examples, nb_eval_steps = 0, 0
         preds = []
         golds = []
         for step, batch in enumerate(tqdm(eval_dataloader, desc="Iteration")):
@@ -150,8 +139,6 @@ def main():
             loss, logits = model.calculate_loss(input_ids, segment_ids, input_mask, label_ids, l_mask)
 
             eval_loss += loss.item()
-            nb_eval_examples += input_ids.size(0)
-            nb_eval_steps += 1
 
             logits = torch.argmax(nn.functional.softmax(logits, dim=-1), dim=-1)
             pred = logits.detach().cpu().numpy()
@@ -160,6 +147,7 @@ def main():
             gold = label_ids.to('cpu').numpy()
             preds.extend(pred)
             golds.extend(gold)
+
         metric = classification_report(golds, preds)
         f1 = f1_score(golds, preds, average="macro")
         evaling_loss.append(eval_loss)
@@ -177,6 +165,7 @@ def main():
                    "best_epoch": best_epoch,
                    "best_f1": best_score}
         json.dump(history, history_path)
+
 
 if __name__ == "__main__":
     main()

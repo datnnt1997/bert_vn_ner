@@ -1,0 +1,263 @@
+﻿thượng tá
+phó giám đốc
+tổng giám đốc
+phó viện trưởng
+viện trưởng
+hiệu trưởng
+hiệu phó
+phó hiệu trưởng
+phó tổng giám đốc
+giám đốc
+bộ trưởng
+thứ trưởng
+cục trưởng
+cục phó
+chánh án
+chủ tịch
+nhân viên
+sinh viên
+học sinh
+sở trưởng
+thủ tướng
+phó giám đốc
+HLV
+huấn luyện viên
+cầu thủ
+thủ môn
+tiền đạo
+nhạc sĩ
+ca sĩ
+diễn viên
+độc giả
+khán giả
+người mẫu
+hoàng tử
+công chúa
+ông chủ
+hoàng đế
+ông vua
+hoàng hậu
+công tử
+giáo sư
+tiến sĩ
+thạc sĩ
+doanh nhân
+luật sư
+GS
+bác sĩ
+trọng tài
+Thiếu tướng 
+Ngoại trưởng 
+nhà phân tích 
+bình luận viên 
+Tổng thống 
+thuyền trưởng 
+đại biểu
+Bộ trưởng
+Chánh án
+Chủ nhiệm
+Chủ tịch
+Cục trưởng
+Đại diện
+Đại sứ
+Giám đốc
+Hiệu trưởng
+Lãnh sự
+Tổng biên tập
+Tổng cục trưởng
+Tổng giám đốc
+Tổng lãnh sự
+Tổng thư ký
+Trưởng ban
+Trưởng liên đoàn
+Trưởng phái đoàn thường trực
+Viện trưởng
+Chánh toà
+Chánh văn phòng
+Chủ nhiệm
+Cục trưởng
+Đại biện
+Đại diện
+Đốc công
+Giám đốc
+Kế toán trưởng
+Kỹ sư trưởng
+Phân hiệu trưởng
+Phân viện trưởng
+Phân xã trưởng
+Quản đốc
+Thuyền trưởng
+Thư ký
+Trưởng ban
+Trưởng bưu cục
+Trưởng cảng vụ
+Trưởng chi cục
+Trưởng chi nhánh
+Trưởng cửa hàng
+Trưởng đài
+Trưởng đội
+Trưởng ga
+Trưởng hạt
+Trưởng hoa tiêu
+Trưởng kho
+Trưởng khoa
+Trưởng máy
+Trưởng phòng
+Trưởng tàu
+Trưởng trại
+Trưởng trạm
+Trưởng ty
+Uỷ viên
+Uỷ viên thư ký
+Viện trưởng
+Vụ trưởng
+Y tá trưởng
+quản lý
+Cán sự
+Cán sự kế hoạch
+Cán sự kế toán
+Cán sự kiểm tra
+Cán sự lao động và tiền lương
+Cán sự quản lý
+Cán sự tài chính
+Cán sự thanh toán
+Cán sự thống kê
+Cán sự thi đua
+Cán sự thương mại
+Cán sự tổ chức
+Cán sự vật giá
+Chuyên viên bảo hộ lao động
+Chuyên viên định mức
+Chuyên viên kế hoạch
+Chuyên viên kế toán
+Chuyên viên kiểm tra
+Chuyên viên lao động và tiền lương
+Chuyên viên quản lý
+Chuyên viên tài chính
+Chuyên viên thanh toán
+Chuyên viên thống kê
+Chuyên viên thi đua
+Chuyên viên thương mại
+Chuyên viên tổ chức
+Chuyên viên vật giá
+Cố vấn
+Kiến trúc sư
+Kỹ sư
+Kỹ sư công nghệ
+Kỹ sư kinh tế
+Kỹ sư thiết kế
+Kỹ thuật viên
+Kỹ thuật viên bảo hộ lao động
+Kỹ thuật viên định mức
+Kỹ thuật viên điều độ
+Kỹ thuật viên giám quản
+Kỹ thuật viên giao nhận
+Kỹ thuật viên hoá nghiệm
+Kỹ thuật viên hoa tiêu
+Kỹ thuật viên kiểm nghiệm
+Kỹ thuật viên quan trắc
+Bác sĩ thú y
+Kỹ sư bảo vệ thực vật
+Kỹ sư chăn nuôi
+Kỹ sư kiểm dịch thực vật
+Kỹ sư nông hóa
+Kỹ sư sinh học
+Kỹ sư trồng trọt
+Kỹ thuật viên bảo vệ thực vật
+Kỹ thuật viên chăn nuôi
+Kỹ thuật viên kiểm dịch thực vật
+Kỹ thuật viên nông hoá
+Kỹ thuật viên sinh học
+Kỹ thuật viên trồng trọt
+Kiểm lâm viên
+Y sĩ thú y
+Bác sĩ
+Cán sự thư viện
+Diễn viên
+Dược sĩ
+Dược tá
+Giảng viên
+Giáo dục viên
+Giáo sư cấp I
+Giáo sư cấp II 
+giáo sư
+phó giáo sư
+Giáo viên
+Hoạ sĩ
+Huấn luyện viên
+Hướng dẫn
+Kỹ thuật viên ánh sáng
+Kỹ thuật viên bảo tàng
+Kỹ thuật viên bảo tồn
+Kỹ thuật viên chụp ảnh
+Kỹ thuật viên lưu trữ
+Lương y
+Nghiên cứu viên
+Người biên dịch
+Người biên tập
+Người bình luận
+Người chỉ huy
+Người hiệu đính
+Người phát thanh
+Người phiên dịch
+Người sáng tác
+Người thu thanh
+Người thuyết minh
+Nhà đạo diễn kịch
+Nhà đạo diễn múa
+Nhà đạo diễn phim
+Nhà điêu khắc
+Nhà hoá trang
+Nhà quay phim
+Nhạc sĩ
+Nhạc trưởng
+Nữ hộ sinh
+Phóng viên
+Xét nghiệm viên
+Y sĩ
+Y tá
+Bí thư
+Chuyên viên
+Công sứ
+Giao thông viên ngoại giao
+Tham tán
+Tuỳ viên
+Cán sự pháp lý
+Chuyên viên pháp lý
+Cố vấn pháp lý
+Công chứng viên
+Điều tra viên
+Giám sát viên
+Kiểm sát viên
+Kiểm soát viên
+Luật sư
+Thanh tra viên
+Thẩm phán
+Trọng tài viên
+Kỹ thuật viên
+Nhân viên
+Nhân viên giao nhận
+Nhân viên hoá đơn 
+Nhân viên kế toán
+Nhân viên thanh toán Thủ kho
+Thủ quỹ
+Kỹ thuật viên can in
+Kỹ thuật viên đánh máy chữ
+Kỹ thuật viên sao chụp
+Kỹ thuật viên vẽ
+Nhân viên lưu trữ
+Nhân viên văn thư
+Kỹ thuật viên điện thoại
+Nhân viên bảo vệ
+Nhân viên bán hàng
+Nhân viên bán vé
+Nhân viên cung ứng
+Nhân viên hành lý
+Nhân viên mua hàng
+Nhân viên phục vụ
+Nhân viên quản lý
+lái xe 
+trung tá 
+Đức Pháp Vương
+Hòa Thượng
+Pháp Vương

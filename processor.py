@@ -5,14 +5,12 @@ import sys
 maxInt = sys.maxsize
 
 while True:
-    # decrease the maxInt value by factor 10
-    # as long as the OverflowError occurs.
-
     try:
         csv.field_size_limit(maxInt)
         break
     except OverflowError:
         maxInt = int(maxInt/10)
+
 
 class Example:
     def __init__(self, eid: int, token_ids: list, token_mask: list, segment_ids: list,
@@ -79,7 +77,6 @@ class NERProcessor:
                         labels.append(label_1)
                         label_mask.append(1)
                     else:
-                        labels.append("O")
                         label_mask.append(0)
             if len(tokens) >= max_seq_length - 1:
                 tokens = tokens[0:(max_seq_length - 2)]
@@ -87,8 +84,8 @@ class NERProcessor:
                 label_mask = label_mask[0:(max_seq_length - 2)]
             ntokens = []
             segment_ids = []
-            label_ids = []
             ntokens.append("[CLS]")
+            label_ids = []
             segment_ids.append(0)
             label_mask.insert(0, 0)
             label_ids.append(self.labels.index("O")+1)
@@ -103,7 +100,6 @@ class NERProcessor:
             label_ids.append(self.labels.index("O")+1)
             input_ids = self.tokenizer.convert_tokens_to_ids(ntokens)
             input_mask = [1] * len(input_ids)
-            # label_mask = [1] * len(label_ids)
             while len(input_ids) < max_seq_length:
                 input_ids.append(0)
                 input_mask.append(0)
@@ -141,7 +137,6 @@ class NERProcessor:
 
 if __name__ == "__main__":
     from transformers.tokenization_bert import BertTokenizer
-
     tokenzier = BertTokenizer.from_pretrained("bert-base-multilingual-cased")
     processor = NERProcessor("./dataset", tokenzier)
     a = processor.get_example("train")
