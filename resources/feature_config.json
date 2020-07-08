@@ -1,0 +1,42 @@
+{
+	"[POS]": {
+		"dim": 21 ,
+		"label": ["A", "C", "E", "I", "L", "M", "N", "P", "R", "T", "V", "X", "Y", "Z", "CH", "Cc", "Nb", "Nc", "Np", "Ny", "Vb"]
+	},
+	"[CASE]": {
+		"dim": 4,
+		"label": ["A_Cap", "I_Cap","M_Cap","N_Cap"]
+	},
+	"[SC]": {
+		"dim": 5,
+		"label": ["Pre_Cap", "Pos_Cap", "N_Cap", "I_Cap", "NI_Cap"]
+	},
+	"FW": {
+		"dim": 2,
+		"label": ["0", "1"]
+	},
+	"QB": {
+		"dim": 2,
+		"label": ["0", "1"]
+	},
+	"Num": {
+		"dim": 2,
+		"label": ["0", "1"]
+	},
+	"LOC": {
+		"dim": 2,
+		"label": ["0", "1"]
+	},
+	"ORG": {
+		"dim": 2,
+		"label": ["0", "1"]
+	},
+	"PER": {
+		"dim": 2,
+		"label": ["0", "1"]
+	},
+	"PPOS": {
+		"dim": 2,
+		"label": ["0", "1"]
+	}
+}
