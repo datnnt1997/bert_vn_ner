@@ -1,5 +1,6 @@
 import os
 import csv
+
 import sys
 
 maxInt = sys.maxsize
@@ -32,43 +33,52 @@ class NERProcessor:
     def get_labels(self):
         return self.labels
 
-    def get_example(self, data_type: str = "train"):
+    def get_example(self, data_type: str = "train", contain_feature=False):
         if data_type == "train":
-            return self._read_file(os.path.join(self.data_dir, 'train.csv'))
+            return self._read_file(os.path.join(self.data_dir, 'train.csv'), contain_feature)
         elif data_type == "dev":
-            return self._read_file(os.path.join(self.data_dir, 'dev.csv'))
+            return self._read_file(os.path.join(self.data_dir, 'dev.csv'), contain_feature)
         elif data_type == "test":
-            return self._read_file(os.path.join(self.data_dir, 'test.csv'))
+            return self._read_file(os.path.join(self.data_dir, 'test.csv'), contain_feature)
         else:
             print(f"ERROR: {data_type} not found!!!")
 
     @staticmethod
-    def _read_file(file_path: str):
+    def _read_file(file_path: str, contain_feature=False):
         """Reads a tab separated value file."""
         with open(file_path, "r", encoding="utf-8") as f:
             reader = csv.reader(f, delimiter="\t")
             eid = 0
             words = []
+            feats = []
             labels = []
             examples = []
             for line in reader:
                 if len(line) >= 2:
                     words.append(line[0].strip())
                     labels.append(line[-1].strip())
+                    if contain_feature:
+                        feat = []
+                        for item in line[1:-1]:
+                            k, v = item.split("]")
+                            feat.append((f"k]", v))
+                        feats.append(feat)
                 else:
-                    examples.append((eid, words, labels))
+                    examples.append((eid, words, labels, feats))
                     words = []
+                    feats = []
                     labels = []
                     eid += 1
             return examples
 
-    def convert_examples_to_features(self, examples, max_seq_length):
+    def convert_examples_to_features(self, examples, max_seq_length, feature=None):
         features = []
         for (ex_index, example) in enumerate(examples):
             tokens = []
             labels = []
+            feats = []
             label_mask = []
-            for i, (word, label) in enumerate(zip(example[1], example[-1])):
+            for i, (word, label) in enumerate(zip(example[1], example[2])):
                 token = self.tokenizer.tokenize(word)
                 tokens.extend(token)
                 label_1 = label
@@ -78,6 +88,7 @@ class NERProcessor:
                         label_mask.append(1)
                     else:
                         label_mask.append(0)
+
             if len(tokens) >= max_seq_length - 1:
                 tokens = tokens[0:(max_seq_length - 2)]
                 labels = labels[0:(max_seq_length - 2)]
@@ -120,8 +131,7 @@ class NERProcessor:
                 print("tokens: %s" % " ".join([str(x) for x in tokens]))
                 print("input_ids: %s" % " ".join([str(x) for x in input_ids]))
                 print("input_mask: %s" % " ".join([str(x) for x in input_mask]))
-                print(
-                    "segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
+                print("segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
                 print("label: %s" % " ".join([str(x) for x in label_ids]))
                 print("label_mask: %s" % " ".join([str(x) for x in label_mask]))
             features.append(

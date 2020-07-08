@@ -1,13 +1,11 @@
 import os
-import torch
 import argparse
 import random
 import numpy as np
 
 import json
-import torch.functional as F
 
-from model import *
+from modules.model import *
 from torch.utils.data import DataLoader, RandomSampler, TensorDataset
 from processor import NERProcessor
 from tqdm import tqdm
@@ -16,20 +14,21 @@ from transformers.tokenization_bert import BertTokenizer
 from sklearn.metrics import classification_report, f1_score
 
 
-def build_dataset(args, processor, data_type='train'):
+def build_dataset(args, processor, data_type='train', feature=None):
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(args.data_dir, 'cached_{}_{}_{}'.format(
         data_type,
         list(filter(None, args.model_name_or_path.split('/'))).pop(),
         str(args.max_seq_length)))
+
     if os.path.exists(cached_features_file):
         print("Loading features from cached file %s", cached_features_file)
         features = torch.load(cached_features_file)
     else:
         print("Creating features from dataset file at %s", args.data_dir)
-        examples = processor.get_example(data_type)
+        examples = processor.get_example(data_type, contain_feature=args.feat_config is not None)
 
-        features = processor.convert_examples_to_features(examples, args.max_seq_length)
+        features = processor.convert_examples_to_features(examples, args.max_seq_length, feature)
         print("Saving features into cached file %s", cached_features_file)
         torch.save(features, cached_features_file)
 
@@ -47,43 +46,24 @@ def build_dataset(args, processor, data_type='train'):
 def main():
     parser = argparse.ArgumentParser()
 
-    ## Required parameters
-    parser.add_argument("--data_dir", default=None, type=str, required=True,
-                        help="The input data dir. Should contain the .tsv files (or other data files) for the task.")
-    parser.add_argument("--model_name_or_path", default=None, type=str, required=True,
-                        help="Path to pre-trained model or shortcut name selected in the list")
+    # Required parameters
+    parser.add_argument("--data_dir", default=None, type=str, required=True)
+    parser.add_argument("--model_name_or_path", default=None, type=str, required=True)
+    parser.add_argument("--output_dir", default=None, type=str, required=True)
 
-    parser.add_argument("--output_dir", default=None, type=str, required=True,
-                        help="The output directory where the model predictions and checkpoints will be written.")
-
-    ## Other parameters
-    parser.add_argument("--cache_dir", default="", type=str,
-                        help="Where do you want to store the pre-trained models downloaded from s3")
-    parser.add_argument("--max_seq_length", default=256, type=int,
-                        help="The maximum total input sequence length after tokenization. Sequences longer "
-                             "than this will be truncated, sequences shorter will be padded.")
-    parser.add_argument("--train_batch_size", default=8, type=int,
-                        help="Batch size per GPU/CPU for training.")
-    parser.add_argument("--eval_batch_size", default=4, type=int,
-                        help="Batch size per GPU/CPU for evaluation.")
-    parser.add_argument("--learning_rate", default=2e-5, type=float,
-                        help="The initial learning rate for Adam.")
-    parser.add_argument("--weight_decay", default=0.0, type=float,
-                        help="Weight deay if we apply some.")
-    parser.add_argument("--adam_epsilon", default=1e-8, type=float,
-                        help="Epsilon for Adam optimizer.")
-    parser.add_argument("--max_grad_norm", default=1.0, type=float,
-                        help="Max gradient norm.")
-    parser.add_argument("--num_train_epochs", default=100.0, type=float,
-                        help="Total number of training epochs to perform.")
-    parser.add_argument("--cuda", action='store_true',
-                        help="Avoid using CUDA when available")
-    parser.add_argument('--overwrite_output_dir', action='store_true',
-                        help="Overwrite the content of the output directory")
-    parser.add_argument('--overwrite_cache', action='store_true',
-                        help="Overwrite the cached training and evaluation sets")
-    parser.add_argument('--seed', type=int, default=42,
-                        help="random seed for initialization")
+    # Other parameters
+    parser.add_argument("--feat_config", default=None, type=str)
+    parser.add_argument("--one_hot_emb", action='store_true')
+    parser.add_argument("--cache_dir", default="", type=str)
+    parser.add_argument("--max_seq_length", default=256, type=int)
+    parser.add_argument("--train_batch_size", default=8, type=int)
+    parser.add_argument("--eval_batch_size", default=4, type=int)
+    parser.add_argument("--learning_rate", default=2e-5, type=float)
+    parser.add_argument("--weight_decay", default=0.0, type=float)
+    parser.add_argument("--adam_epsilon", default=1e-8, type=float)
+    parser.add_argument("--num_train_epochs", default=100.0, type=float)
+    parser.add_argument("--cuda", action='store_true')
+    parser.add_argument('--seed', type=int, default=42)
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() and not args.cuda else "cpu")
@@ -96,9 +76,9 @@ def main():
     label_list = processor.get_labels()
     num_labels = len(label_list) + 1
 
-    config, model = modelbuilder(args.model_name_or_path, num_labels)
+    config, model, feature = modelbuilder(args.model_name_or_path, num_labels, args.feat_config, args.one_hot_emb)
 
-    train_data = build_dataset(args, processor, data_type='train')
+    train_data = build_dataset(args, processor, data_type='train', feature=feature)
 
     model.to(device)
     optimizer = AdamW(model.named_parameters(), lr=args.learning_rate, eps=args.adam_epsilon)
@@ -119,7 +99,6 @@ def main():
             batch = tuple(t.to(device) for t in batch)
             input_ids, input_mask, segment_ids, label_ids, l_mask = batch
             loss, _ = model.calculate_loss(input_ids, segment_ids, input_mask, label_ids, l_mask)
-
             tr_loss += loss.item()
             loss.backward()
             optimizer.step()
@@ -137,9 +116,7 @@ def main():
             batch = tuple(t.to(device) for t in batch)
             input_ids, input_mask, segment_ids, label_ids, l_mask = batch
             loss, logits = model.calculate_loss(input_ids, segment_ids, input_mask, label_ids, l_mask)
-
             eval_loss += loss.item()
-
             logits = torch.argmax(nn.functional.softmax(logits, dim=-1), dim=-1)
             pred = logits.detach().cpu().numpy()
             l_mask = l_mask.view(-1) == 1

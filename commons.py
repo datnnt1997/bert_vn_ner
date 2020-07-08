@@ -3,10 +3,33 @@ from vncorenlp import VnCoreNLP
 import os
 import re
 import string
+import json
+
+
+class Feature:
+    def __init__(self, config_file: str, one_hot_emb: bool = True ):
+        self.feature_infos = None
+        self.num_of_feature = 0
+        self.feature_keys = []
+        self.one_hot_emb = one_hot_emb
+        self.feature_emb_dim = 0
+        self.read_config(config_file)
+
+    def read_config(self, config_file: str):
+        with open(config_file, "r", encoding="utf-8") as f:
+            config = json.load(f)
+            self.feature_infos = {}
+            for key in config.keys():
+                self.feature_infos[key] = config[key]
+                self.feature_infos[key]['size'] = len(config[key]['label'])
+                self.feature_emb_dim += config[key]['dim']
+            self.num_of_feature = len(self.feature_infos)
+            self.feature_keys = list(self.feature_infos.keys())
+            f.close()
 
 
 class FeatureExtractor:
-    def __init__(self, annotator: VnCoreNLP, dict_dir: str, feature_types: list = None):
+    def __init__(self, annotator: VnCoreNLP or None, dict_dir: str, feature_types: list = None):
         if feature_types is None:
             feature_types = ["pos", "cf", "sc", "fw", "qb", "num", "loc", "org", "per", "ppos"]
         self.annotator = annotator
@@ -280,7 +303,7 @@ class FeatureExtractor:
         dict_features = self.recover_feature(sentence, features, dict_type)
         return dict_features
 
-    def extract_feature(self, sentence: str or list, pos_tags: list = None):
+    def extract_feature(self, sentence: str or list, pos_tags: list = None, ner_labels: list = None):
         features = []
         result = []
         if "pos" in self.feature_types:
@@ -307,9 +330,11 @@ class FeatureExtractor:
         if "ppos" in self.feature_types:
             features.append(self.add_dict_feature(sentence, '[PPOS]'))
         for idx, token in enumerate(sentence):
-            example = '' + str(sentence[idx])
+            example = str(sentence[idx])
             for feature in range(len(features)):
-                example = f"{example} {features[feature][idx]}"
+                example = f"{example}\t{features[feature][idx]}"
+            if ner_labels is not None:
+                example += f"\t{ner_labels[idx]}"
             result.append(example)
         return result
 
