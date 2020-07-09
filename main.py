@@ -7,6 +7,7 @@ import json
 
 from modules.model import *
 from torch.utils.data import DataLoader, RandomSampler, TensorDataset
+from commons import NERdataset
 from processor import NERProcessor
 from tqdm import tqdm
 from transformers import AdamW
@@ -14,7 +15,7 @@ from transformers.tokenization_bert import BertTokenizer
 from sklearn.metrics import classification_report, f1_score
 
 
-def build_dataset(args, processor, data_type='train', feature=None):
+def build_dataset(args, processor, data_type='train', feature=None, device="cpu"):
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(args.data_dir, 'cached_{}_{}_{}'.format(
         data_type,
@@ -33,14 +34,13 @@ def build_dataset(args, processor, data_type='train', feature=None):
         torch.save(features, cached_features_file)
 
     # Convert to Tensors and build dataset
-    all_input_ids = torch.tensor([f.token_ids for f in features], dtype=torch.long)
-    all_token_mask = torch.tensor([f.token_mask for f in features], dtype=torch.long)
-    all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
-    all_label_id = torch.tensor([f.label_ids for f in features], dtype=torch.long)
-    all_label_mask = torch.tensor([f.label_mask for f in features], dtype=torch.long)
+    # all_input_ids = torch.tensor([f.token_ids for f in features], dtype=torch.long)
+    # all_token_mask = torch.tensor([f.token_mask for f in features], dtype=torch.long)
+    # all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
+    # all_label_id = torch.tensor([f.label_ids for f in features], dtype=torch.long)
+    # all_label_mask = torch.tensor([f.label_mask for f in features], dtype=torch.long)
 
-    dataset = TensorDataset(all_input_ids, all_token_mask, all_segment_ids, all_label_id, all_label_mask)
-    return dataset
+    return NERdataset(features, device)
 
 
 def main():
@@ -76,16 +76,19 @@ def main():
     label_list = processor.get_labels()
     num_labels = len(label_list) + 1
 
-    config, model, feature = modelbuilder(args.model_name_or_path, num_labels, args.feat_config, args.one_hot_emb)
+    config, model, feature = modelbuilder(args.model_name_or_path, num_labels, args.feat_config, args.one_hot_emb, device=device)
 
-    train_data = build_dataset(args, processor, data_type='train', feature=feature)
-
+    train_data = build_dataset(args, processor, data_type='train', feature=feature, device=device)
+    eval_data = build_dataset(args, processor, data_type='test', feature=feature, device=device)
     model.to(device)
-    optimizer = AdamW(model.named_parameters(), lr=args.learning_rate, eps=args.adam_epsilon)
+    optimizer = AdamW(model.parameters(), lr=args.learning_rate, eps=args.adam_epsilon)
 
     # Train
     train_sampler = RandomSampler(train_data)
     train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=args.train_batch_size)
+
+    eval_sampler = RandomSampler(eval_data)
+    eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size)
     model.train()
     best_score = -1
     best_epoch = 0
@@ -96,26 +99,21 @@ def main():
         tr_loss = 0
         model.train()
         for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
-            batch = tuple(t.to(device) for t in batch)
-            input_ids, input_mask, segment_ids, label_ids, l_mask = batch
-            loss, _ = model.calculate_loss(input_ids, segment_ids, input_mask, label_ids, l_mask)
+            input_ids, input_mask, segment_ids, label_ids, l_mask, feats = batch
+            loss, _ = model.calculate_loss(input_ids, feats, segment_ids, input_mask, label_ids, l_mask)
             tr_loss += loss.item()
             loss.backward()
             optimizer.step()
             model.zero_grad()
         print(tr_loss)
         training_loss.append(tr_loss)
-        eval_data = build_dataset(args, processor, data_type='test')
-        eval_sampler = RandomSampler(eval_data)
-        eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size)
         model.eval()
         eval_loss = 0
         preds = []
         golds = []
         for step, batch in enumerate(tqdm(eval_dataloader, desc="Iteration")):
-            batch = tuple(t.to(device) for t in batch)
-            input_ids, input_mask, segment_ids, label_ids, l_mask = batch
-            loss, logits = model.calculate_loss(input_ids, segment_ids, input_mask, label_ids, l_mask)
+            input_ids, input_mask, segment_ids, label_ids, l_mask, feats = batch
+            loss, logits = model.calculate_loss(input_ids, feats, segment_ids, input_mask, label_ids, l_mask)
             eval_loss += loss.item()
             logits = torch.argmax(nn.functional.softmax(logits, dim=-1), dim=-1)
             pred = logits.detach().cpu().numpy()
@@ -137,11 +135,13 @@ def main():
             torch.save(model.state_dict(), model_path)
             print(f"Model save at epoch {best_epoch} with best score {best_score}")
         history_path = f"{args.output_dir}/history.json"
-        history = {"train_loss": training_loss,
-                   "eval_loss": evaling_loss,
-                   "best_epoch": best_epoch,
-                   "best_f1": best_score}
-        json.dump(history, history_path)
+        with open(history_path, "w", encoding="utf-8") as his_file:
+            history = {"train_loss": training_loss,
+                       "eval_loss": evaling_loss,
+                       "best_epoch": best_epoch,
+                       "best_f1": best_score}
+            json.dump(history, his_file)
+            his_file.close()
 
 
 if __name__ == "__main__":

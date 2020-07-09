@@ -15,7 +15,7 @@ class NER:
         self.max_seq_length = 256
         num_labels = len(self.label_list) + 1
 
-        _, self.model = model_builder_from_pretrained("bert-base-multilingual-cased", num_labels, "outputs")
+        _, self.model = model_builder_from_pretrained("bert-base-multilingual-cased", num_labels, "outputs_1")
         self.vncore = VnCoreNLP("VnCoreNLP-master/VnCoreNLP-1.1.1.jar", annotators="wseg",
                                       max_heap_size='-Xmx500m')
 

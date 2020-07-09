@@ -7,30 +7,31 @@ import torch.nn.functional as F
 
 
 class FeatureRep(nn.Module):
-    def __init__(self, feature: Feature, gpu: bool = False):
+    def __init__(self, feature: Feature, device: str = 'cpu'):
         super(FeatureRep, self).__init__()
-        self.feature_embeddings = []
+        self.feature_embeddings = {}
         self.feature_num = feature.num_of_feature
         self.feature_dim = feature.feature_emb_dim
         for feat_key in feature.feature_keys:
             feat = feature.feature_infos[feat_key]
-            self.feature_embeddings.append(nn.Embedding(len(feat['label']), feat['dim']))
+            self.feature_embeddings[feat_key] = nn.Embedding(len(feat['label']) + 1, feat['dim'])
 
         if feature.one_hot_emb:
-            for idx, feat_key in enumerate(feature.feature_keys):
+            for feat_key in feature.feature_keys:
                 feat = feature.feature_infos[feat_key]
                 one_hot_weight = F.one_hot(torch.arange(feat['dim']))
-                self.feature_embeddings[idx].weight.data.copy_(one_hot_weight)
-                self.feature_embeddings[idx].weight.requires_grad = False
+                one_hot_weight = torch.cat([torch.zeros((1, feat['dim']), dtype=torch.int64), one_hot_weight], dim=0)
+                self.feature_embeddings[feat_key].weight.data.copy_(one_hot_weight)
+                self.feature_embeddings[feat_key].weight.requires_grad = False
         else:
-            for idx, feat_key in enumerate(feature.feature_keys):
+            for feat_key in feature.feature_keys:
                 feat = feature.feature_infos[feat_key]
-                self.feature_embeddings[idx].weight.data.copy_(torch.from_numpy(
+                self.feature_embeddings[feat_key].weight.data.copy_(torch.from_numpy(
                     self.random_embedding(len(feat['label']), feat['dim'])))
 
-        if gpu:
-            for idx in range(self.feature_num):
-                self.feature_embeddings[idx] = self.feature_embeddings[idx].cuda()
+        if device.type == 'cuda':
+            for feat_key in feature.feature_keys:
+                self.feature_embeddings[feat_key] = self.feature_embeddings[feat_key].cuda()
 
     @staticmethod
     def random_embedding(vocab_size, embedding_dim):
@@ -42,8 +43,8 @@ class FeatureRep(nn.Module):
 
     def forward(self, features: list):
         feat_reps = []
-        for idx in range(self.feature_num):
-            feat_reps.append(self.feature_embeddings[idx](features[idx]))
+        for feat_key, feat_value in features.items():
+            feat_reps.append(self.feature_embeddings[feat_key](feat_value))
         feat_embs = torch.cat(feat_reps, dim=-1)
         return feat_embs
 

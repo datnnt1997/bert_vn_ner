@@ -7,7 +7,7 @@ import torch.nn as nn
 
 
 class NerModel(BertPreTrainedModel):
-    def __init__(self, config, feature=None):
+    def __init__(self, config, feature=None, device="cpu"):
         super(NerModel, self).__init__(config)
         self.num_labels = config.num_labels
         self.use_feature = False
@@ -16,7 +16,7 @@ class NerModel(BertPreTrainedModel):
         self.ferep = None
 
         if feature is not None:
-            self.ferep = FeatureRep(feature)
+            self.ferep = FeatureRep(feature, device)
             self.use_feature = True
             self.hidden_size += self.ferep.feature_dim
 
@@ -73,22 +73,22 @@ class NerModel(BertPreTrainedModel):
         return outputs  # (loss), logits
 
 
-def modelbuilder(model_name_or_path: str, num_labels: int, feat_config_path: str = None, one_hot_embed: bool =True):
+def modelbuilder(model_name_or_path: str, num_labels: int, feat_config_path: str = None, one_hot_embed: bool =True, device: str ="cpu"):
     feature = None
     if feat_config_path is not None:
         feature = Feature(feat_config_path, one_hot_embed)
     config = BertConfig.from_pretrained(model_name_or_path, num_labels=num_labels)
-    model = NerModel.from_pretrained(model_name_or_path, config=config, feature=feature)
+    model = NerModel.from_pretrained(model_name_or_path, config=config, feature=feature, device=device)
     return config, model, feature
 
 
 def model_builder_from_pretrained(model_name_or_path, num_labels, pre_train_path, feat_config_path: str = None,
-                                  one_hot_embed: bool = True):
+                                  one_hot_embed: bool = True, device: str ="cpu"):
     feature = None
     if feat_config_path is not None:
         feature = Feature(feat_config_path, one_hot_embed)
     config = BertConfig.from_pretrained(model_name_or_path, num_labels=num_labels)
-    model = NerModel.from_pretrained(model_name_or_path, config=config, feature=feature)
+    model = NerModel.from_pretrained(model_name_or_path, config=config, feature=feature, device=device)
     model.load_state_dict(torch.load(pre_train_path+"/vner_model.bin", map_location='cpu'))
     model.eval()
     return config, model, feature

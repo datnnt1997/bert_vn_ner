@@ -1,14 +1,38 @@
 from vncorenlp import VnCoreNLP
-
+from torch.utils.data.dataset import Dataset
 import os
 import re
 import string
 import json
 
+import torch
+
+
+class NERdataset(Dataset):
+    def __init__(self, features, device):
+        self.features = features
+        self.device = device
+
+    def __len__(self):
+        return len(self.features)
+
+    def __getitem__(self, idx):
+        sample = self.features[idx]
+        token_tensors = torch.tensor(sample.token_ids, dtype=torch.long).to(device=self.device)
+        token_mask_tensors = torch.tensor(sample.token_mask, dtype=torch.long).to(device=self.device)
+        segment_tensors = torch.tensor(sample.segment_ids, dtype=torch.long).to(device=self.device)
+        label_tensors = torch.tensor(sample.label_ids, dtype=torch.long).to(device=self.device)
+        label_mask_tensors = torch.tensor(sample.label_mask, dtype=torch.long).to(device=self.device)
+        feats_tensors = {}
+        for feat_key, feat_value in sample.feats.items():
+            feats_tensors[feat_key] = torch.tensor(feat_value, dtype=torch.long).to(device=self.device)
+        return token_tensors, token_mask_tensors, segment_tensors, label_tensors, label_mask_tensors, feats_tensors
+
 
 class Feature:
     def __init__(self, config_file: str, one_hot_emb: bool = True ):
         self.feature_infos = None
+        self.special_token = None
         self.num_of_feature = 0
         self.feature_keys = []
         self.one_hot_emb = one_hot_emb
@@ -19,10 +43,11 @@ class Feature:
         with open(config_file, "r", encoding="utf-8") as f:
             config = json.load(f)
             self.feature_infos = {}
-            for key in config.keys():
-                self.feature_infos[key] = config[key]
-                self.feature_infos[key]['size'] = len(config[key]['label'])
-                self.feature_emb_dim += config[key]['dim']
+            for key in config["feats"].keys():
+                self.feature_infos[key] = config["feats"][key]
+                self.feature_infos[key]['size'] = len(config["feats"][key]['label'])
+                self.feature_emb_dim += config["feats"][key]['dim']
+            self.special_token = config["special_token"]
             self.num_of_feature = len(self.feature_infos)
             self.feature_keys = list(self.feature_infos.keys())
             f.close()
