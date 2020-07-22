@@ -26,54 +26,50 @@ class NerModel(BertPreTrainedModel):
 
         self.init_weights()
 
-    def forward(self, input_ids, feat_ids=None, token_type_ids=None, attention_mask=None, attention_mask_label=None):
+    def forward(self, input_ids, feat_ids=None, token_type_ids=None, attention_mask=None, valid_mask=None):
 
-        outputs = self.bert(input_ids,
-                            attention_mask=attention_mask,
-                            token_type_ids=token_type_ids,
-                            head_mask=None)
+        return NotImplementedError
 
-        token_reps = outputs[0]
-        if self.use_feature:
-            feat_reps = self.ferep(feat_ids)
-            token_reps = torch.cat([token_reps, feat_reps], dim=-1)
+    def calculate_loss(self, input_ids, attention_masks, token_masks, segment_ids, label_ids, label_masks, feats):
 
-        sequence_output = self.dropout(token_reps)
-
-        logits = self.classifier(sequence_output)
-
-        active_loss = attention_mask_label.view(-1) == 1
-        active_logits = logits.view(-1, self.num_labels)[active_loss]
-
-        return active_logits
-
-    def calculate_loss(self, input_ids, feat_ids=None, token_type_ids=None, attention_mask=None, labels=None,
-                       attention_mask_label=None):
-
-        outputs = self.bert(input_ids,
-                            attention_mask=attention_mask,
-                            token_type_ids=token_type_ids,
-                            head_mask=None)
+        batch_size, max_len = input_ids.size()
+        outputs = self.bert(input_ids=input_ids,
+                            attention_mask=attention_masks,
+                            token_type_ids=segment_ids)
 
         token_reps = outputs[0]
+
         if self.use_feature:
-            feat_reps = self.ferep(feat_ids)
+            feat_reps = self.ferep(feats)
             token_reps = torch.cat([token_reps, feat_reps], dim=-1)
+
+        valid_token_reps = torch.zeros_like(token_reps)
+        for i in range(batch_size):
+            jj = -1
+            for j in range(max_len):
+                if token_masks[i][j].item() == 1:
+                    jj += 1
+                    valid_token_reps[i][jj] = token_reps[i][j]
+        token_reps = self.dropout(valid_token_reps)
 
         sequence_output = self.dropout(token_reps)
 
         logits = self.classifier(sequence_output)
         loss_function = nn.CrossEntropyLoss()
 
-        active_loss = attention_mask_label.view(-1) == 1
-        active_logits = logits.view(-1, self.num_labels)[active_loss]
-        active_labels = labels.view(-1)[active_loss]
+        mask = label_masks.view(-1) == 1
+        active_logits = logits.view(-1, self.num_labels)[mask]
+        active_labels = label_ids.view(-1)[mask]
         loss = loss_function(active_logits, active_labels)
-        outputs = (loss, active_logits)
-        return outputs  # (loss), logits
+
+        return loss, (active_logits, active_labels)
 
 
-def modelbuilder(model_name_or_path: str, num_labels: int, feat_config_path: str = None, one_hot_embed: bool =True, device: str ="cpu"):
+def model_builder(model_name_or_path: str,
+                 num_labels: int,
+                 feat_config_path: str = None,
+                 one_hot_embed: bool =True,
+                 device: torch.device = torch.device("cpu")):
     feature = None
     if feat_config_path is not None:
         feature = Feature(feat_config_path, one_hot_embed)
@@ -82,8 +78,12 @@ def modelbuilder(model_name_or_path: str, num_labels: int, feat_config_path: str
     return config, model, feature
 
 
-def model_builder_from_pretrained(model_name_or_path, num_labels, pre_train_path, feat_config_path: str = None,
-                                  one_hot_embed: bool = True, device: str ="cpu"):
+def model_builder_from_pretrained(model_name_or_path,
+                                  num_labels,
+                                  pre_train_path,
+                                  feat_config_path: str = None,
+                                  one_hot_embed: bool = True,
+                                  device: torch.device = torch.device("cpu")):
     feature = None
     if feat_config_path is not None:
         feature = Feature(feat_config_path, one_hot_embed)
@@ -95,7 +95,7 @@ def model_builder_from_pretrained(model_name_or_path, num_labels, pre_train_path
 
 
 if __name__ == "__main__":
-    config, model, feature = modelbuilder(model_name_or_path="bert-base-multilingual-uncased",
-                                          num_labels=21,
-                                          feat_config_path="resources/feature_config.json")
+    config, model, feature = model_builder(model_name_or_path="bert-base-multilingual-uncased",
+                                           num_labels=21,
+                                           feat_config_path="resources/feature_config.json")
     print(model)

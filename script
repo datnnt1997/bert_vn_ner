@@ -1,0 +1,2 @@
+python3 main.py --data_dir data/feat_data --model_name_or_path bert-base-multilingual-cased --output_dir outputs --feat_config resources/feature_config.json
+python3 main.py --data_dir data/raw_data --model_name_or_path bert-base-multilingual-cased --output_dir outputs

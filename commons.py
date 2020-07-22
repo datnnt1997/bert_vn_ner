@@ -4,8 +4,30 @@ import os
 import re
 import string
 import json
-
+import logging
 import torch
+
+from logging.handlers import RotatingFileHandler
+
+logger = logging.getLogger()
+
+
+def init_logger(log_file=None, log_file_level=logging.NOTSET):
+    log_format = logging.Formatter("%(message)s")
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(log_format)
+    logger.handlers = [console_handler]
+
+    if log_file and log_file != '':
+        file_handler = RotatingFileHandler(
+            log_file)
+        file_handler.setLevel(log_file_level)
+        file_handler.setFormatter(log_format)
+        logger.addHandler(file_handler)
+    return logger
 
 
 class NERdataset(Dataset):
@@ -18,19 +40,22 @@ class NERdataset(Dataset):
 
     def __getitem__(self, idx):
         sample = self.features[idx]
-        token_tensors = torch.tensor(sample.token_ids, dtype=torch.long).to(device=self.device)
-        token_mask_tensors = torch.tensor(sample.token_mask, dtype=torch.long).to(device=self.device)
-        segment_tensors = torch.tensor(sample.segment_ids, dtype=torch.long).to(device=self.device)
-        label_tensors = torch.tensor(sample.label_ids, dtype=torch.long).to(device=self.device)
-        label_mask_tensors = torch.tensor(sample.label_mask, dtype=torch.long).to(device=self.device)
-        feats_tensors = {}
+        token_id_tensors = torch.tensor(sample.token_ids, dtype=torch.long).to(device=self.device)
+        attention_mask_tensors = torch.tensor(sample.attention_masks, dtype=torch.long).to(device=self.device)
+        token_mask_tensors = torch.tensor(sample.token_masks, dtype=torch.long).to(device=self.device)
+        segment_id_tensors = torch.tensor(sample.segment_ids, dtype=torch.long).to(device=self.device)
+        label_id_tensors = torch.tensor(sample.label_ids, dtype=torch.long).to(device=self.device)
+        label_mask_tensors = torch.tensor(sample.label_masks, dtype=torch.long).to(device=self.device)
+
+        feat_tensors = {}
         for feat_key, feat_value in sample.feats.items():
-            feats_tensors[feat_key] = torch.tensor(feat_value, dtype=torch.long).to(device=self.device)
-        return token_tensors, token_mask_tensors, segment_tensors, label_tensors, label_mask_tensors, feats_tensors
+            feat_tensors[feat_key] = torch.tensor(feat_value, dtype=torch.long).to(device=self.device)
+        return token_id_tensors, attention_mask_tensors, token_mask_tensors, segment_id_tensors, label_id_tensors, \
+            label_mask_tensors, feat_tensors
 
 
 class Feature:
-    def __init__(self, config_file: str, one_hot_emb: bool = True ):
+    def __init__(self, config_file: str, one_hot_emb: bool = True):
         self.feature_infos = None
         self.special_token = None
         self.num_of_feature = 0

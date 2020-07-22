@@ -14,7 +14,7 @@ class FeatureRep(nn.Module):
         self.feature_dim = feature.feature_emb_dim
         for feat_key in feature.feature_keys:
             feat = feature.feature_infos[feat_key]
-            self.feature_embeddings[feat_key] = nn.Embedding(len(feat['label']) + 1, feat['dim'])
+            self.feature_embeddings[feat_key] = nn.Embedding(len(feat['label']) + 1, feat['dim'], padding_idx=0)
 
         if feature.one_hot_emb:
             for feat_key in feature.feature_keys:
@@ -27,7 +27,8 @@ class FeatureRep(nn.Module):
             for feat_key in feature.feature_keys:
                 feat = feature.feature_infos[feat_key]
                 self.feature_embeddings[feat_key].weight.data.copy_(torch.from_numpy(
-                    self.random_embedding(len(feat['label']), feat['dim'])))
+                    self.random_embedding(len(feat['label'])+1, feat['dim'])))
+
 
         if device.type == 'cuda':
             for feat_key in feature.feature_keys:
