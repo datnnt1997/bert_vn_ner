@@ -1,16 +1,18 @@
 from modules.featrep import FeatureRep
 from commons import Feature
 from transformers.modeling_bert import BertModel, BertPreTrainedModel, BertConfig
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 import torch
 import torch.nn as nn
 
 
 class NerModel(BertPreTrainedModel):
-    def __init__(self, config, feature=None, device="cpu"):
+    def __init__(self, config, feature=None, use_lstm=False, device="cpu"):
         super(NerModel, self).__init__(config)
         self.num_labels = config.num_labels
         self.use_feature = False
+        self.use_lstm = False
         self.hidden_size = config.hidden_size
         self.bert = BertModel(config)
         self.ferep = None
@@ -19,6 +21,11 @@ class NerModel(BertPreTrainedModel):
             self.ferep = FeatureRep(feature, device)
             self.use_feature = True
             self.hidden_size += self.ferep.feature_dim
+
+        if use_lstm:
+            self.use_lstm = True
+            self.lstm = nn.LSTM(self.hidden_size, config.hidden_size, batch_first=True, num_layers=1)
+            self.hidden_size = config.hidden_size
 
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
@@ -45,9 +52,13 @@ class NerModel(BertPreTrainedModel):
                 if token_masks[i][j].item() == 1:
                     jj += 1
                     valid_token_reps[i][jj] = token_reps[i][j]
-        token_reps = self.dropout(valid_token_reps)
 
-        sequence_output = self.dropout(token_reps)
+        if self.use_lstm:
+            token_reps = self.dropout(valid_token_reps)
+            lstm_outs, _ = self.lstm(token_reps)
+            valid_token_reps = lstm_outs
+
+        sequence_output = self.dropout(valid_token_reps)
 
         logits = self.classifier(sequence_output)
         mask = label_masks.view(-1) == 1
@@ -55,7 +66,6 @@ class NerModel(BertPreTrainedModel):
         return active_logits
 
     def calculate_loss(self, input_ids, attention_masks, token_masks, segment_ids, label_ids, label_masks, feats):
-
         batch_size, max_len = input_ids.size()
         outputs = self.bert(input_ids=input_ids,
                             attention_mask=attention_masks,
@@ -74,9 +84,13 @@ class NerModel(BertPreTrainedModel):
                 if token_masks[i][j].item() == 1:
                     jj += 1
                     valid_token_reps[i][jj] = token_reps[i][j]
-        token_reps = self.dropout(valid_token_reps)
 
-        sequence_output = self.dropout(token_reps)
+        if self.use_lstm:
+            token_reps = self.dropout(valid_token_reps)
+            lstm_outs, _ = self.lstm(token_reps)
+            valid_token_reps = lstm_outs
+
+        sequence_output = self.dropout(valid_token_reps)
 
         logits = self.classifier(sequence_output)
         loss_function = nn.CrossEntropyLoss()
@@ -90,15 +104,16 @@ class NerModel(BertPreTrainedModel):
 
 
 def model_builder(model_name_or_path: str,
-                 num_labels: int,
-                 feat_config_path: str = None,
-                 one_hot_embed: bool =True,
-                 device: torch.device = torch.device("cpu")):
+                  num_labels: int,
+                  feat_config_path: str = None,
+                  one_hot_embed: bool = True,
+                  use_lstm= False,
+                  device: torch.device = torch.device("cpu")):
     feature = None
     if feat_config_path is not None:
         feature = Feature(feat_config_path, one_hot_embed)
     config = BertConfig.from_pretrained(model_name_or_path, num_labels=num_labels)
-    model = NerModel.from_pretrained(model_name_or_path, config=config, feature=feature, device=device)
+    model = NerModel.from_pretrained(model_name_or_path, config=config, feature=feature, use_lstm=use_lstm, device=device)
     return config, model, feature
 
 
@@ -107,12 +122,13 @@ def model_builder_from_pretrained(model_name_or_path,
                                   pre_train_path,
                                   feat_config_path: str = None,
                                   one_hot_embed: bool = True,
+                                  use_lstm= False,
                                   device: torch.device = torch.device("cpu")):
     feature = None
     if feat_config_path is not None:
         feature = Feature(feat_config_path, one_hot_embed)
     config = BertConfig.from_pretrained(model_name_or_path, num_labels=num_labels)
-    model = NerModel.from_pretrained(model_name_or_path, config=config, feature=feature, device=device)
+    model = NerModel.from_pretrained(model_name_or_path, config=config, feature=feature, use_lstm= False, device=device)
     model.load_state_dict(torch.load(pre_train_path+"/vner_model.bin", map_location='cpu'))
     model.eval()
     return config, model, feature

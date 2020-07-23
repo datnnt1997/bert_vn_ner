@@ -1,11 +1,16 @@
 import os
+import torch
 from flask import Flask, jsonify, request
 from predict import NER
 
 os.makedirs('temp/', exist_ok=True)
 app = Flask('Full-text Extractor for Administrative Documents')
 
-ner = NER()
+pretrain_dir = "pretrains/baseline/models"
+max_seq_length = 256
+batch_size = 4
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+ner = NER(pretrain_dir, max_seq_length, batch_size, device)
 
 
 @app.route('/ner/', methods=['POST'])

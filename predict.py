@@ -7,19 +7,23 @@ from torch.utils.data import DataLoader
 import torch
 import torch.nn as nn
 import logging
-
+import argparse
 
 class NER:
-    def __init__(self):
+    def __init__(self, pretrain_dir="pretrains/baseline/models",
+                 max_seq_length=256,
+                 batch_size=4,
+                 device=torch.device('cpu')):
         self.tokenizer = BertTokenizer.from_pretrained("bert-base-multilingual-cased")
         processor = NERProcessor(None, self.tokenizer)
         self.label_list = processor.labels
-        self.max_seq_length = 256
-        self.batch_size = 4
-        self.device = torch.device('cpu')
+        self.max_seq_length = max_seq_length
+        self.batch_size = batch_size
+        self.device = device
         num_labels = processor.get_num_labels()
 
-        _, self.model, feature = model_builder_from_pretrained("bert-base-multilingual-cased", num_labels, "outputs")
+        _, self.model, feature = model_builder_from_pretrained("bert-base-multilingual-cased", num_labels, pretrain_dir)
+        self.model.to(device)
 
     def convert_sentences_to_features(self, sentences):
         features = []
@@ -45,6 +49,7 @@ class NER:
 
             ntokens = []
             segment_ids = []
+
             # Add [CLS] token
             ntokens.append("[CLS]")
             token_masks.insert(0, 0)
@@ -66,6 +71,7 @@ class NER:
 
             padding = [0] * (self.max_seq_length - len(label_masks))
             label_masks.extend(padding)
+
             assert len(input_ids) == self.max_seq_length
             assert len(attention_masks) == self.max_seq_length
             assert len(segment_ids) == self.max_seq_length
@@ -126,9 +132,24 @@ class NER:
 
 
 if __name__ == "__main__":
-    ner = NER()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pretrain_dir", default=None, type=str, required=True)
+    parser.add_argument("--max_seq_length", default=128, type=int)
+    parser.add_argument("--batch_size", default=8, type=int)
+    parser.add_argument("--cuda", action='store_true')
+    args = parser.parse_args()
+
+    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+
+    ner = NER(args.pretrain_dir, args.max_seq_length, args.batch_size, device)
+
     while True:
         input_text = input("Enter text: ")
-        # input_text = """Theo quy định của Trung Quốc, khi lưu lượng nước đổ về hồ chứa Tam Hiệp đạt 50.000m3/s và mực nước ở trạm Liên Hoa Đường tăng lên mức cảnh báo, lũ sẽ bắt đầu được đánh số. Trước đó, trận lũ số 1 đã hình thành ở thượng nguồn sông Trường Giang vào đầu tháng 7."""
-        ner.predict(input_text)
+        if len(input_text.strip()) == 0:
+            print("Input NULL, auto use text sample!!!!")
+            input_text = """Ông Nguyễn Đức Vinh - giám đốc Sở Nông nghiệp và phát triển nông thôn Hà Giang - nhận 
+            định mưa lớn cục bộ trong thời gian ngắn là nguyên nhân chính dẫn đến tình trạng ngập lụt chưa từng có ở 
+            TP Hà Giang. Mặt khác, theo ông Vinh, TP Hà Giang có địa hình lòng chảo, bao xung quanh là núi cũng khiến 
+            lượng nước đổ dồn về trung tâm rất lớn. """
+        print(ner.predict(input_text))
 

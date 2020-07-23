@@ -76,8 +76,7 @@ def evaluate(model, iterator, label_map):
     for step, batch in enumerate(tqdm(iterator, desc="Iteration")):
         tokens, token_ids, attention_masks, token_mask, segment_ids, label_ids, label_masks, feats = batch
         loss, (logits, labels) = model.calculate_loss(token_ids, attention_masks, token_mask, segment_ids, label_ids,
-                                                      label_masks,
-                                                      feats)
+                                                      label_masks, feats)
         eval_loss += loss.item()
         logits = torch.argmax(nn.functional.softmax(logits, dim=-1), dim=-1)
         pred = logits.detach().cpu().numpy()
@@ -103,7 +102,11 @@ def run(args):
     processor = NERProcessor(args.data_dir, tokenizer)
     num_labels = processor.get_num_labels()
     logger.info("Build model ...")
-    config, model, feature = model_builder(args.model_name_or_path, num_labels, args.feat_config, args.one_hot_emb,
+    config, model, feature = model_builder(model_name_or_path=args.model_name_or_path,
+                                           num_labels=num_labels,
+                                           feat_config_path=args.feat_config,
+                                           one_hot_embed=args.one_hot_emb,
+                                           use_lstm=args.use_lstm,
                                            device=device)
     model.to(device)
     logger.info("Prepare dataset ...")
@@ -217,6 +220,7 @@ if __name__ == "__main__":
     # Other parameters
     parser.add_argument("--feat_config", default=None, type=str)
     parser.add_argument("--one_hot_emb", action='store_true')
+    parser.add_argument("--use_lstm", action='store_true')
     parser.add_argument("--cache_dir", default="", type=str)
     parser.add_argument("--max_seq_length", default=128, type=int)
     parser.add_argument("--train_batch_size", default=8, type=int)

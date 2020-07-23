@@ -144,7 +144,6 @@ class NERProcessor:
             attention_masks = [1] * len(input_ids)
             label_masks = [1] * len(label_ids)
             segment_ids = [0] * max_seq_length
-
             padding = [0] * (max_seq_length - len(input_ids))
             input_ids.extend(padding)
             attention_masks.extend(padding)
@@ -165,6 +164,7 @@ class NERProcessor:
             assert sum(token_masks) == sum(label_masks)
             for k in feats.keys():
                 assert len(feats[k]) == max_seq_length
+
             if ex_index < 5:
                 print("*** Example ***")
                 print("guid: %s" % (example[0]))

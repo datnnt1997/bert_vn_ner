@@ -1,4 +1,7 @@
 data/seg_data/feat_data
 data/seg_data/raw_data
 data/full_token
+data/sample_data/feat_data
 venv
+pretrains/logs
+pretrains/models
