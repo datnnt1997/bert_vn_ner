@@ -7,14 +7,15 @@ app = Flask('Full-text Extractor for Administrative Documents')
 
 ner = NER()
 
+
 @app.route('/ner/', methods=['POST'])
 def fultext_extractor():
     try:
         text = request.json['text']
-        words, labels = ner.predict(text)
+        entities = ner.predict(text)
 
         result = []
-        for w, l in list(zip(words, labels)):
+        for w, l in entities:
             result.append({"entity": w,
                            "label": l})
 

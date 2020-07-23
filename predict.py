@@ -122,7 +122,6 @@ class NER:
                     entity = None
                 else:
                     entity = None
-        print(entites)
         return entites
 
 
