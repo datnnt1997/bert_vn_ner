@@ -91,7 +91,7 @@ def evaluate(model, iterator, label_map):
 
 
 def run(args):
-    device = torch.device("cuda" if torch.cuda.is_available() and not args.cuda else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -184,15 +184,15 @@ def run(args):
         }, e)
         summary_writer.add_scalars('F1-SCORE/IOB TAG', {
             "AVG": iob_metric['macro avg']['f1-score'],
-            "O": iob_metric['O']['f1-score'] if 'O' in metric else 0.0,
-            "B-MISC": iob_metric['B-MISC']['f1-score'] if 'B-MISC' in metric else 0.0,
-            "I-MISC": iob_metric['I-MISC']['f1-score'] if 'I-MISC' in metric else 0.0,
-            "B-PER": iob_metric['B-PER']['f1-score'] if 'B-PER' in metric else 0.0,
-            "I-PER": iob_metric['I-PER']['f1-score'] if 'I-PER' in metric else 0.0,
-            "B-ORG": iob_metric['B-ORG']['f1-score'] if 'B-ORG' in metric else 0.0,
-            "I-ORG": iob_metric['I-ORG']['f1-score'] if 'I-ORG' in metric else 0.0,
-            "B-LOC": iob_metric['B-LOC']['f1-score'] if 'B-LOC' in metric else 0.0,
-            "I-LOC": iob_metric['I-LOC']['f1-score'] if 'I-LOC' in metric else 0.0
+            "O": iob_metric['O']['f1-score'] if 'O' in iob_metric else 0.0,
+            "B-MISC": iob_metric['B-MISC']['f1-score'] if 'B-MISC' in iob_metric else 0.0,
+            "I-MISC": iob_metric['I-MISC']['f1-score'] if 'I-MISC' in iob_metric else 0.0,
+            "B-PER": iob_metric['B-PER']['f1-score'] if 'B-PER' in iob_metric else 0.0,
+            "I-PER": iob_metric['I-PER']['f1-score'] if 'I-PER' in iob_metric else 0.0,
+            "B-ORG": iob_metric['B-ORG']['f1-score'] if 'B-ORG' in iob_metric else 0.0,
+            "I-ORG": iob_metric['I-ORG']['f1-score'] if 'I-ORG' in iob_metric else 0.0,
+            "B-LOC": iob_metric['B-LOC']['f1-score'] if 'B-LOC' in iob_metric else 0.0,
+            "I-LOC": iob_metric['I-LOC']['f1-score'] if 'I-LOC' in iob_metric else 0.0
         }, e)
 
         if iob_metric['macro avg']['f1-score'] > best_score:
