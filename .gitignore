@@ -1,2 +1,4 @@
-data/feat_data
-data/raw_data
+data/seg_data/feat_data
+data/seg_data/raw_data
+data/full_token
+venv

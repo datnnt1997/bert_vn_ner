@@ -1,4 +1,4 @@
-from vncorenlp import VnCoreNLP
+# from vncorenlp import VnCoreNLP
 from torch.utils.data.dataset import Dataset
 import os
 import re
@@ -50,8 +50,8 @@ class NERdataset(Dataset):
         feat_tensors = {}
         for feat_key, feat_value in sample.feats.items():
             feat_tensors[feat_key] = torch.tensor(feat_value, dtype=torch.long).to(device=self.device)
-        return token_id_tensors, attention_mask_tensors, token_mask_tensors, segment_id_tensors, label_id_tensors, \
-            label_mask_tensors, feat_tensors
+        return sample.tokens, token_id_tensors, attention_mask_tensors, token_mask_tensors, segment_id_tensors, \
+               label_id_tensors, label_mask_tensors, feat_tensors
 
 
 class Feature:
@@ -79,10 +79,10 @@ class Feature:
 
 
 class FeatureExtractor:
-    def __init__(self, annotator: VnCoreNLP or None, dict_dir: str, feature_types: list = None):
+    def __init__(self, annotator: None, dict_dir: str, feature_types: list = None):
         if feature_types is None:
             feature_types = ["pos", "cf", "sc", "fw", "qb", "num", "loc", "org", "per", "ppos"]
-        self.annotator = annotator
+        # self.annotator = annotator
         self.feature_types = feature_types
 
         self.loc_dict = None

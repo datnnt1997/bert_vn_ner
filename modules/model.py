@@ -26,9 +26,33 @@ class NerModel(BertPreTrainedModel):
 
         self.init_weights()
 
-    def forward(self, input_ids, feat_ids=None, token_type_ids=None, attention_mask=None, valid_mask=None):
+    def forward(self, input_ids, attention_masks, token_masks, segment_ids, label_masks, feats):
+        batch_size, max_len = input_ids.size()
+        outputs = self.bert(input_ids=input_ids,
+                            attention_mask=attention_masks,
+                            token_type_ids=segment_ids)
 
-        return NotImplementedError
+        token_reps = outputs[0]
+
+        if self.use_feature:
+            feat_reps = self.ferep(feats)
+            token_reps = torch.cat([token_reps, feat_reps], dim=-1)
+
+        valid_token_reps = torch.zeros_like(token_reps)
+        for i in range(batch_size):
+            jj = -1
+            for j in range(max_len):
+                if token_masks[i][j].item() == 1:
+                    jj += 1
+                    valid_token_reps[i][jj] = token_reps[i][j]
+        token_reps = self.dropout(valid_token_reps)
+
+        sequence_output = self.dropout(token_reps)
+
+        logits = self.classifier(sequence_output)
+        mask = label_masks.view(-1) == 1
+        active_logits = logits.view(-1, self.num_labels)[mask]
+        return active_logits
 
     def calculate_loss(self, input_ids, attention_masks, token_masks, segment_ids, label_ids, label_masks, feats):
 

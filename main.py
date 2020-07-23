@@ -53,15 +53,15 @@ def update_model_weights(model, iterator, optimizer, scheduler):
     model.train()
 
     for step, batch in enumerate(tqdm(iterator, desc="Iteration")):
-        token_ids, attention_masks, token_mask, segment_ids, label_ids, label_masks, feats = batch
+        tokens, token_ids, attention_masks, token_mask, segment_ids, label_ids, label_masks, feats = batch
         loss, _ = model.calculate_loss(token_ids, attention_masks, token_mask, segment_ids, label_ids, label_masks,
                                        feats)
         tr_loss += loss.item()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
         if (step + 1) % args.gradient_accumulation_steps == 0:
-            scheduler.step()
             optimizer.step()
+            scheduler.step()
             model.zero_grad()
     return tr_loss
 
@@ -74,7 +74,7 @@ def evaluate(model, iterator, label_map):
     model.eval()
 
     for step, batch in enumerate(tqdm(iterator, desc="Iteration")):
-        token_ids, attention_masks, token_mask, segment_ids, label_ids, label_masks, feats = batch
+        tokens, token_ids, attention_masks, token_mask, segment_ids, label_ids, label_masks, feats = batch
         loss, (logits, labels) = model.calculate_loss(token_ids, attention_masks, token_mask, segment_ids, label_ids,
                                                       label_masks,
                                                       feats)

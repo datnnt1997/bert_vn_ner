@@ -15,9 +15,10 @@ while True:
 
 
 class Example:
-    def __init__(self, eid: int, token_ids: list, token_masks: list, segment_ids: list,
+    def __init__(self, eid: int, tokens : list, token_ids: list, token_masks: list, segment_ids: list,
                  label_ids: list, label_masks: list, attention_masks: list, feats: dict):
         self.eid = eid
+        self.tokens = tokens
         self.token_ids = token_ids
         self.token_masks = token_masks
         self.segment_ids = segment_ids
@@ -104,6 +105,9 @@ class NERProcessor:
                     else:
                         token_masks.append(0)
                         labels.append("[PAD]")
+                        if len(ex_feats) > 0:
+                            for feat_key, _ in ex_feats[i]:
+                                feats[feat_key].append(0)
 
             if len(tokens) >= max_seq_length - 1:
                 tokens = tokens[0:(max_seq_length - 2)]
@@ -147,6 +151,7 @@ class NERProcessor:
             token_masks.extend(padding)
             for k in feats.keys():
                 feats[k].extend(padding)
+
             padding = [0] * (max_seq_length - len(label_ids))
             label_masks.extend(padding)
             label_ids.extend(padding)
@@ -158,7 +163,8 @@ class NERProcessor:
             assert len(label_masks) == max_seq_length
             assert len(token_masks) == max_seq_length
             assert sum(token_masks) == sum(label_masks)
-
+            for k in feats.keys():
+                assert len(feats[k]) == max_seq_length
             if ex_index < 5:
                 print("*** Example ***")
                 print("guid: %s" % (example[0]))
@@ -175,6 +181,7 @@ class NERProcessor:
 
             features.append(
                 Example(eid=example[0],
+                        tokens=[],
                         token_ids=input_ids,
                         attention_masks=attention_masks,
                         segment_ids=segment_ids,

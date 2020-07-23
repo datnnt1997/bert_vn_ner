@@ -1,94 +1,135 @@
 from modules.model import *
 from transformers.tokenization_bert import BertTokenizer
-from processor import NERProcessor
-from vncorenlp import VnCoreNLP
-
+from processor import NERProcessor, Example
+from commons import NERdataset
+from underthesea import sent_tokenize, word_tokenize
+from torch.utils.data import DataLoader
 import torch
 import torch.nn as nn
+import logging
 
 
 class NER:
     def __init__(self):
         self.tokenizer = BertTokenizer.from_pretrained("bert-base-multilingual-cased")
         processor = NERProcessor(None, self.tokenizer)
-        self.label_list = processor.get_labels()
+        self.label_list = processor.labels
         self.max_seq_length = 256
-        num_labels = len(self.label_list) + 1
+        self.batch_size = 4
+        self.device = torch.device('cpu')
+        num_labels = processor.get_num_labels()
 
         _, self.model, feature = model_builder_from_pretrained("bert-base-multilingual-cased", num_labels, "outputs")
-        self.vncore = VnCoreNLP("VnCoreNLP-master/VnCoreNLP-1.1.1.jar", annotators="wseg",
-                                      max_heap_size='-Xmx500m')
+
+    def convert_sentences_to_features(self, sentences):
+        features = []
+        for sent_id, sentence in enumerate(sentences):
+            words = sentence.split()
+            logging.info(f"Input tokens: {words}")
+            tokens = []
+            feats = {}
+            label_ids = []
+            token_masks = []
+            for word in words:
+                token = self.tokenizer.tokenize(word)
+                tokens.extend(token)
+                for m in range(len(token)):
+                    if m == 0:
+                        token_masks.append(1)
+                    else:
+                        token_masks.append(0)
+
+            if len(tokens) >= self.max_seq_length - 1:
+                tokens = tokens[0:(self.max_seq_length - 2)]
+                token_masks = token_masks[0:(self.max_seq_length - 2)]
+
+            ntokens = []
+            segment_ids = []
+            # Add [CLS] token
+            ntokens.append("[CLS]")
+            token_masks.insert(0, 0)
+            ntokens.extend(tokens)
+            # Add [SEP] token
+            ntokens.append("[SEP]")
+            segment_ids.append(0)
+            token_masks.append(0)
+            input_ids = self.tokenizer.convert_tokens_to_ids(ntokens)
+
+            attention_masks = [1] * len(input_ids)
+            label_masks = [1] * sum(token_masks)
+            segment_ids = [0] * self.max_seq_length
+
+            padding = [0] * (self.max_seq_length - len(input_ids))
+            input_ids.extend(padding)
+            attention_masks.extend(padding)
+            token_masks.extend(padding)
+
+            padding = [0] * (self.max_seq_length - len(label_masks))
+            label_masks.extend(padding)
+            assert len(input_ids) == self.max_seq_length
+            assert len(attention_masks) == self.max_seq_length
+            assert len(segment_ids) == self.max_seq_length
+            assert len(label_masks) == self.max_seq_length
+            assert len(token_masks) == self.max_seq_length
+            assert sum(token_masks) == sum(label_masks)
+
+            features.append(Example(eid=sent_id,
+                                    tokens=sentence,
+                                    token_ids=input_ids,
+                                    attention_masks=attention_masks,
+                                    segment_ids=segment_ids,
+                                    label_ids=label_ids,
+                                    label_masks=label_masks,
+                                    token_masks=token_masks,
+                                    feats=feats))
+        return features
 
     def preprocess(self, text, feats=None):
-        words = self.vncore.tokenize(text)[0]
-        print(words)
-        tokens = []
-        valid_mask = []
-        for word in words:
-            token = self.tokenizer.tokenize(word)
-            tokens.extend(token)
-            for m in range(len(token)):
-                if m == 0:
-                    valid_mask.append(1)
-                else:
-                    valid_mask.append(0)
-
-        if len(tokens) >= self.max_seq_length - 1:
-            tokens = tokens[0:(self.max_seq_length - 2)]
-            valid_mask = valid_mask[0:(self.max_seq_length - 2)]
-
-        ntokens = []
-        segment_ids = []
-        # Add [CLS] token
-        ntokens.append("[CLS]")
-        label_ids = []
-        segment_ids.append(0)
-        valid_mask.insert(0, 0)
-        for i, token in enumerate(tokens):
-            ntokens.append(token)
-            segment_ids.append(0)
-        # Add [SEP] token
-        ntokens.append("[SEP]")
-        segment_ids.append(0)
-        valid_mask.append(0)
-        input_ids = self.tokenizer.convert_tokens_to_ids(ntokens)
-        input_mask = [1] * len(input_ids)
-        label_mask = [1] * sum(valid_mask)
-        while len(input_ids) < self.max_seq_length:
-            input_ids.append(0)
-            input_mask.append(0)
-            segment_ids.append(0)
-            valid_mask.append(0)
-
-        while len(label_ids) < self.max_seq_length:
-            label_ids.append(0)
-        assert len(input_ids) == self.max_seq_length
-        assert len(input_mask) == self.max_seq_length
-        assert len(segment_ids) == self.max_seq_length
-        assert len(label_ids) == self.max_seq_length
-        assert len(valid_mask) == self.max_seq_length
-
-        input_id_tensors = torch.tensor([input_ids], dtype=torch.long)
-        all_token_mask_tensor = torch.tensor([input_mask], dtype=torch.long)
-        all_segment_id_tensors = torch.tensor([segment_ids], dtype=torch.long)
-        all_valid_mask_tensors = torch.tensor([valid_mask], dtype=torch.long)
-        return (words, input_id_tensors, all_token_mask_tensor, all_segment_id_tensors, all_valid_mask_tensors)
+        sentences = sent_tokenize(' '.join(word_tokenize(text)))
+        features = self.convert_sentences_to_features(sentences)
+        data = NERdataset(features, self.device)
+        return DataLoader(data, batch_size=self.batch_size)
 
     def predict(self, text):
-        words, input_ids, input_mask, segment_ids, v_mask = self.preprocess(text)
-        logits = self.model(input_ids, segment_ids, input_mask, None, v_mask)
-        logits = torch.argmax(nn.functional.softmax(logits, dim=-1), dim=-1)
-        pred = logits.detach().cpu().numpy()
-        labels = []
-        for p in pred:
-            labels.append(self.label_list[p-1])
-        print(labels)
-        return words, labels
+        entites = []
+        iterator = self.preprocess(text)
+        for step, batch in enumerate(iterator):
+            sents, token_ids, attention_masks, token_masks, segment_ids, label_ids, label_masks, feats = batch
+            logits = self.model(token_ids, attention_masks, token_masks, segment_ids, label_masks, feats)
+            logits = torch.argmax(nn.functional.softmax(logits, dim=-1), dim=-1)
+            pred = logits.detach().cpu().numpy()
+            entity = None
+            tokens = []
+            [tokens.extend(sent.split()) for sent in sents]
+            for p, w in list(zip(pred, tokens)):
+                label = self.label_list[p-1]
+                if not label == 'O':
+                    prefix, label = label.split('-')
+                    if entity is None:
+                        entity = (w, label)
+                    else:
+                        if entity[-1] == label:
+                            if prefix == 'I':
+                                entity = (entity[0] + f' {w}', label)
+                            else:
+                                entites.append(entity)
+                                entity = (w, label)
+                        else:
+                            entites.append(entity)
+                            entity = (w, label)
+                elif entity is not None:
+                    entites.append(entity)
+                    entity = None
+                else:
+                    entity = None
+        print(entites)
+        return entites
 
 
 if __name__ == "__main__":
     ner = NER()
     while True:
-        input_text = input(">>>>")
+        input_text = input("Enter text: ")
+        # input_text = """Theo quy định của Trung Quốc, khi lưu lượng nước đổ về hồ chứa Tam Hiệp đạt 50.000m3/s và mực nước ở trạm Liên Hoa Đường tăng lên mức cảnh báo, lũ sẽ bắt đầu được đánh số. Trước đó, trận lũ số 1 đã hình thành ở thượng nguồn sông Trường Giang vào đầu tháng 7."""
         ner.predict(input_text)
 
