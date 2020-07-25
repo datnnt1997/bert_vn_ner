@@ -82,18 +82,20 @@ example Vietnamese sentence in dataset.
 }
 ```
 
+
+
 ### VLSP 2016 result
 
 The overall performance of **bert-base-multilingual-cased** on **test** set:
 
-|              | Tag                |F1-score            |
-| ------------ | ------------------ | ------------------ |
-|              | Average            |  ...%              |
-|              | O                  |  ...%              |
-| BERT+Softmax | PER                |  ...%              |
-|              | ORG                |  ...%              |
-|              | LOC                |  ...%              |
-|              | MISC               |  ...%              |
+
+
+| Models              |       F1-Score                                                        ||||||
+|---------------------|------------|------------|------------|------------|------------|-----------|
+|                     | O          | PER        | ORG        | LOC        | MISC       | Average   |
+| BERT                |  99,65%    |  93,80%    |  77,76%    |  92,37%    |  90,17%    |  **90,75%**   |
+| BERT + feats        |  ..,..%    |  ..,..%    |  ..,..%    |  ..,..%    |  ..,..%    |  ..,..%   |
+| BERT + feats + LSTM |  ..,..%    |  ..,..%    |  ..,..%    |  ..,..%    |  ..,..%    |  ..,..%   |
 
 
 ### References

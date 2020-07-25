@@ -122,7 +122,7 @@ def model_builder_from_pretrained(model_name_or_path,
                                   pre_train_path,
                                   feat_config_path: str = None,
                                   one_hot_embed: bool = True,
-                                  use_lstm= False,
+                                  use_lstm=False,
                                   device: torch.device = torch.device("cpu")):
     feature = None
     if feat_config_path is not None:
