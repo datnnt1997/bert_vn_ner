@@ -38,7 +38,7 @@ example Vietnamese sentence in dataset.
 
 ## Run the code
 ### Train
-`python3 main.py --data_dir data/ --model_name_or_path bert-base-multilingual-cased --output_dir outputs --logs logs --cuda`
+`python3 train.py --data_dir data/ --model_name_or_path bert-base-multilingual-cased --output_dir outputs --logs logs --cuda`
 
 **Note**: file structure of the dataset
 ```text

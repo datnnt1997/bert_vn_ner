@@ -63,8 +63,7 @@ def preprocess():
     args = parser.parse_args()
     fe_types = args.feature_types.split(",")
 
-    fe = FeatureExtractor(annotator=None,
-                          dict_dir=args.dict_dir,
+    fe = FeatureExtractor(dict_dir=args.dict_dir,
                           feature_types=fe_types)
 
     # Process Train file

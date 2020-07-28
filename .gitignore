@@ -1,7 +1,5 @@
-data/seg_data/feat_data
-data/seg_data/raw_data
-data/full_token
-data/sample_data/feat_data
+data/segment_data
+data/token_data
 venv
-pretrains/logs
-pretrains/models
+pretrains/baseline
+pretrains/feats

@@ -15,7 +15,7 @@ while True:
 
 
 class Example:
-    def __init__(self, eid: int, tokens : list, token_ids: list, token_masks: list, segment_ids: list,
+    def __init__(self, eid: int, tokens: str, token_ids: list, token_masks: list, segment_ids: list,
                  label_ids: list, label_masks: list, attention_masks: list, feats: dict):
         self.eid = eid
         self.tokens = tokens
@@ -29,7 +29,7 @@ class Example:
 
 
 class NERProcessor:
-    def __init__(self, data_dir: str, tokenizer):
+    def __init__(self, data_dir: str or None, tokenizer):
         self.data_dir = data_dir
         self.tokenizer = tokenizer
         self.labels = ["O", "B-MISC", "I-MISC",  "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC"]
@@ -181,7 +181,7 @@ class NERProcessor:
 
             features.append(
                 Example(eid=example[0],
-                        tokens=[],
+                        tokens="",
                         token_ids=input_ids,
                         attention_masks=attention_masks,
                         segment_ids=segment_ids,

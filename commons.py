@@ -1,13 +1,13 @@
-# from vncorenlp import VnCoreNLP
+from logging.handlers import RotatingFileHandler
 from torch.utils.data.dataset import Dataset
+from underthesea import pos_tag, word_tokenize
+
 import os
 import re
 import string
 import json
 import logging
 import torch
-
-from logging.handlers import RotatingFileHandler
 
 logger = logging.getLogger()
 
@@ -54,6 +54,27 @@ class NERdataset(Dataset):
                label_id_tensors, label_mask_tensors, feat_tensors
 
 
+def pos_tag_normalize(tag):
+    tags_map = {
+        "Ab": "A",
+        "B": "FW",
+        "Cc": "C",
+        "Fw": "FW",
+        "Nb": "FW",
+        "Ne": "Nc",
+        "Ni": "Np",
+        "NNP": "Np",
+        "Ns": "Nc",
+        "S": "Z",
+        "Vb": "V",
+        "Y": "Np"
+    }
+    if tag in tags_map:
+        return tags_map[tag]
+    else:
+        return tag
+
+
 class Feature:
     def __init__(self, config_file: str, one_hot_emb: bool = True):
         self.feature_infos = None
@@ -79,12 +100,10 @@ class Feature:
 
 
 class FeatureExtractor:
-    def __init__(self, annotator: None, dict_dir: str, feature_types: list = None):
+    def __init__(self, dict_dir: str, feature_types: list = None):
         if feature_types is None:
             feature_types = ["pos", "cf", "sc", "fw", "qb", "num", "loc", "org", "per", "ppos"]
-        # self.annotator = annotator
         self.feature_types = feature_types
-
         self.loc_dict = None
         self.org_dict = None
         self.per_dict = None
@@ -121,25 +140,61 @@ class FeatureExtractor:
         # Load Location dictionary
         self.ppos_dict, self.ppos_max_lenght = self.read_dict(os.path.join(dict_dir, 'vnPersonalPositions.txt'))
 
-    def wseg_and_add_pos_tag_feature(self, sentence: str or list, pos_tags: list = None) -> list:
+    @staticmethod
+    def wseg_and_add_pos_tag_feature(sentence: str or list,
+                                     pos_tags: list = None,
+                                     ner_labels: list = None) -> (list, list):
+        if type(sentence) == str:
+            sentence = sentence.split()
+        if ner_labels is None:
+            ner_labels = ['O'] * len(sentence)
         pos_features = []
         words = []
-        if pos_tags is not None and type(sentence) == list:
-            words = sentence
-            for pos in pos_tags:
-                pos_features.append('[POS]' + pos.strip())
-        else:
-            annotated_text = self.annotator.annotate(sentence)['sentences'][0]
-            for anno in annotated_text:
-                words.append(anno['form'])
-                pos_features.append('[POS]' + anno['posTag'])
-        return words, pos_features
+        labels = []
 
-    def word_segment(self, sentence: str or list):
+        if pos_tags is None:
+            annotated_text = pos_tag(" ".join(sentence))
+            sentence = []
+            pos_tags = []
+            for word, pos in annotated_text:
+                sentence.append(word.strip())
+                pos_tags.append(pos.strip())
+            ner_labels = ['O'] * len(sentence)
+
+        for word, pos, label in list(zip(sentence, pos_tags, ner_labels)):
+            tokens = word.split()
+            (prefix, tag) = label.split('-') if not label == 'O' else ('', label)
+            for idx, token in enumerate(tokens):
+                if token.strip() == '':
+                    continue
+                if idx == 0 and prefix.strip() == 'B':
+                    labels.append(label)
+                else:
+                    labels.append(f'I-{tag.strip()}' if not label == 'O' else 'O')
+                words.append(token.strip())
+                pos_features.append('[POS]' + pos_tag_normalize(pos.strip()))
+        return words, pos_features, labels
+
+    @staticmethod
+    def word_segment(sentence: str or list, ner_labels: list = None):
         if type(sentence) == str:
-            return self.annotator.tokenize(sentence)[0]
-        else:
-            return sentence
+            sentence = word_tokenize(sentence)
+        if ner_labels is None:
+            ner_labels = ['O'] * len(sentence)
+        words = []
+        labels = []
+        for word, label in list(zip(sentence, ner_labels)):
+            tokens = word.split()
+            prefix, tag = label.split('-') if not label == 'O' else '', label
+            for idx, token in enumerate(tokens):
+                if token.strip() == '':
+                    continue
+                if idx == 0 and prefix.strip() == 'B':
+                    labels.append(label)
+                else:
+                    labels.append(f'I-{tag.strip()}' if not label == 'O' else 'O')
+                words.append(token)
+        return words, labels
 
     @staticmethod
     def add_case_feature(sentence: list) -> list:
@@ -246,7 +301,7 @@ class FeatureExtractor:
         for count in range(max_lenght):
             if word.lower() in self.loc_dict:
                 num_word = max_lenght - count
-                for id in range(num_word):
+                for _ in range(num_word):
                     feature.append('[LOC]1')
                 feature = self.add_location_feature_recursive(sentence, max_lenght, startidx + num_word, feature)
                 break
@@ -269,7 +324,7 @@ class FeatureExtractor:
         for count in range(max_lenght):
             if word.lower() in self.org_dict:
                 num_word = max_lenght - count
-                for id in range(num_word):
+                for _ in range(num_word):
                     feature.append('[ORG]1')
                 feature = self.add_organization_feature_recursive(sentence, max_lenght, startidx + num_word, feature)
                 break
@@ -292,7 +347,7 @@ class FeatureExtractor:
         for count in range(max_lenght):
             if word.lower() in self.per_dict:
                 num_word = max_lenght - count
-                for id in range(num_word):
+                for _ in range(num_word):
                     feature.append('[PER]1')
                 feature = self.add_person_feature_recursive(sentence, max_lenght, startidx + num_word, feature)
                 break
@@ -315,7 +370,7 @@ class FeatureExtractor:
         for count in range(max_lenght):
             if word.lower() in self.ppos_dict:
                 num_word = max_lenght - count
-                for id in range(num_word):
+                for _ in range(num_word):
                     feature.append('[PPOS]1')
                 feature = self.add_person_position_feature_recursive(sentence, max_lenght, startidx + num_word, feature)
                 break
@@ -326,14 +381,15 @@ class FeatureExtractor:
             feature = self.add_person_position_feature_recursive(sentence, max_lenght, startidx + 1, feature)
         return feature
 
-    def recover_feature(self, orginal_sentence, feature, type):
+    @staticmethod
+    def recover_feature(orginal_sentence, feature, feat_type):
         new_feature = []
         for words in orginal_sentence:
             word = words.split("_")
-            if (type + '0') in feature[0:len(word)]:
-                new_feature.append(type + '0')
+            if (feat_type + '0') in feature[0:len(word)]:
+                new_feature.append(feat_type + '0')
             else:
-                new_feature.append(type + '1')
+                new_feature.append(feat_type + '1')
             del feature[0:len(word)]
         return new_feature
 
@@ -353,14 +409,14 @@ class FeatureExtractor:
         dict_features = self.recover_feature(sentence, features, dict_type)
         return dict_features
 
-    def extract_feature(self, sentence: str or list, pos_tags: list = None, ner_labels: list = None):
+    def extract_feature(self, sentence: str or list, pos_tags: list = None, ner_labels: list = None, format=None):
         features = []
         result = []
         if "pos" in self.feature_types:
-            sentence, pos_features = self.wseg_and_add_pos_tag_feature(sentence, pos_tags)
+            sentence, pos_features, ner_labels = self.wseg_and_add_pos_tag_feature(sentence, pos_tags, ner_labels)
             features.append(pos_features)
         else:
-            sentence = self.word_segment(sentence)
+            sentence, ner_labels = self.word_segment(sentence, ner_labels)
         if "cf" in self.feature_types:
             features.append(self.add_case_feature(sentence))
         if "sc" in self.feature_types:
@@ -379,19 +435,29 @@ class FeatureExtractor:
             features.append(self.add_dict_feature(sentence, '[PER]'))
         if "ppos" in self.feature_types:
             features.append(self.add_dict_feature(sentence, '[PPOS]'))
-        for idx, token in enumerate(sentence):
-            example = str(sentence[idx])
-            for feature in range(len(features)):
-                example = f"{example}\t{features[feature][idx]}"
-            if ner_labels is not None:
-                example += f"\t{ner_labels[idx]}"
-            result.append(example)
+        if format == "text":
+            for idx, token in enumerate(sentence):
+                example = str(sentence[idx])
+                for feature in range(len(features)):
+                    example = f"{example}\t{features[feature][idx]}"
+                if ner_labels is not None:
+                    example += f"\t{ner_labels[idx]}"
+                result.append(example)
+        else:
+            feats = []
+            for idx, _ in enumerate(sentence):
+                feat = []
+                for feature in features:
+                    k, v = feature[idx].split("]")
+                    feat.append((f"{k}]", v))
+                feats.append(feat)
+            result = (sentence, feats)
         return result
 
 
 if __name__ == "__main__":
-    vncore = VnCoreNLP("VnCoreNLP-master/VnCoreNLP-1.1.1.jar", annotators="wseg, pos", max_heap_size='-Xmx500m')
-    fe = FeatureExtractor(annotator=vncore, dict_dir='./resources/Dict')
-
+    print("Build Extractor ...")
+    fe = FeatureExtractor(dict_dir='resources/features')
     text = "Chỉ	riêng xã Cương Gián	(Hà Tĩnh) đã có 10 thuyền viên tử nạn giữa trùng dương bao la."
+    print(f"Input text: {text}")
     print(fe.extract_feature(text))

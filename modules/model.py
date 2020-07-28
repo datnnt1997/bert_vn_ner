@@ -120,13 +120,13 @@ def model_builder(model_name_or_path: str,
 def model_builder_from_pretrained(model_name_or_path,
                                   num_labels,
                                   pre_train_path,
-                                  feat_config_path: str = None,
+                                  feat_dir: str = None,
                                   one_hot_embed: bool = True,
                                   use_lstm=False,
                                   device: torch.device = torch.device("cpu")):
     feature = None
-    if feat_config_path is not None:
-        feature = Feature(feat_config_path, one_hot_embed)
+    if feat_dir is not None:
+        feature = Feature(feat_dir+"/feature_config.json", one_hot_embed)
     config = BertConfig.from_pretrained(model_name_or_path, num_labels=num_labels)
     model = NerModel.from_pretrained(model_name_or_path, config=config, feature=feature, use_lstm= False, device=device)
     model.load_state_dict(torch.load(pre_train_path+"/vner_model.bin", map_location='cpu'))
