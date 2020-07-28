@@ -51,6 +51,7 @@ example Vietnamese sentence in dataset.
 ### Predict
 `python3 predict.py --pretrain_dir pretrains/ --max_seq_length 128 --batch_size 4 --cuda`
 
+**Note**: Using *Underthesea NLP Toolkit* for sentence segmenttation to pre-process input raw text.
 ### API
 `python3 api.py`
 
@@ -101,3 +102,4 @@ The overall performance of **bert-base-multilingual-cased** on **test** set:
 ### References
 - [Google's BERT](https://github.com/google-research/bert)
 - [HuggingFace's Transformers](https://github.com/huggingface/pytorch-transformers)
+- [Underthesea](https://github.com/undertheseanlp/underthesea)
