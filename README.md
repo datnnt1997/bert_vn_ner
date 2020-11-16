@@ -3,7 +3,7 @@
 Code by **Trong-Dat Ngo**.
 
 ## Introductions
-Pytorch implementation of BERT models to perform named entity recognition (NER) for Vietnamese. This system using pretrain model from 
+Pytorch implementation of BERT models to perform named entity recognition (NER) for Vietnamese. This system using pretrained model from 
 [transformers](https://github.com/huggingface/transformers)
 ## Installation
 Requirements:
