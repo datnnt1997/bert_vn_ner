@@ -6,7 +6,7 @@ Code by **Trong-Dat Ngo**.
 Pytorch implementation of BERT models to perform named entity recognition (NER) for Vietnamese. Besides, the features in word are also used to represent words. This system using pretrained model from 
 [transformers](https://github.com/huggingface/transformers)
 
-<img src="./images/model_architecture.PNG" width="100"/>
+<img src="./images/model_architecture.PNG" width="200"/>
 
 ## Installation
 Requirements:
