@@ -30,6 +30,6 @@ torch==1.5.1
 tqdm==4.48.0
 transformers==3.0.2
 underthesea==1.1.17
-urllib3==1.25.10
+urllib3==1.26.5
 Werkzeug==1.0.1
 
