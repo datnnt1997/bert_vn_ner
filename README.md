@@ -102,7 +102,7 @@ The overall performance of **bert-base-multilingual-cased** on **test** set:
 | BERT + feats + LSTM |  ..,..%    |  ..,..%    |  ..,..%    |  ..,..%    |  ..,..%    |  ..,..%   |
 
 
-### References
+## References
 - [Google's BERT](https://github.com/google-research/bert)
 - [HuggingFace's Transformers](https://github.com/huggingface/pytorch-transformers)
 - [Underthesea](https://github.com/undertheseanlp/underthesea)
