@@ -13,7 +13,7 @@ joblib==0.13.2
 languageflow==1.1.13a1
 MarkupSafe==1.1.1
 nltk==3.4.5
-numpy==1.19.1
+numpy==1.22.0
 packaging==20.4
 pyparsing==2.4.7
 python-crfsuite==0.9.6
